@@ -1,0 +1,15 @@
+[LIB]
+size=0
+
+[RES]
+size=0
+
+[SOURCE]
+1\SOURCEFILE=/Users/huangziqing/Documents/xspworkspace/xui2.0/xsp/src/main.lua
+2\SOURCEFILE=/Users/huangziqing/Documents/xspworkspace/xui2.0/xsp/src/base.lua
+3\SOURCEFILE=/Users/huangziqing/Documents/xspworkspace/xui2.0/xsp/src/xui/utils.lua
+4\SOURCEFILE=/Users/huangziqing/Documents/xspworkspace/xui2.0/xsp/src/xui/xui.lua
+size=4
+
+[UI]
+size=0
