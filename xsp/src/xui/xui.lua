@@ -40,12 +40,109 @@ function _rootView:show()
 	context:show()
 end
 
---/////////////////////////////////////////////////////////////
+------------------------------------------------------------------
+local _button={}
+local xui_button={
+	Count = 0,
+	layout = function ()
+		return {
+			view = 'div',
+			style = {
+                ['align-items'] = 'center',
+                ['justify-content'] = 'center',
+                ['border-radius'] = 12,
+            },
+			subviews = {
+                {
+                    view = 'text',
+                    style = {
+                        ['text-overflow'] = 'ellipsis',
+                        ['font-size'] = 25,
+                        lines = 1,
+                    }
+                }
+            }
+		}
+	end
+}
+function _button:createLayout(Base)
+	Base = Base or {}
+	local xpos = Base.xpos and Base.xpos/100*self.width or 0
+	local ypos = Base.ypos and Base.ypos/100*self.height or 0
+	local width = (Base.w or 100)/100*self.width
+	local height = (Base.h or 100)/100*self.height
+	if not Base.id then
+		xui_button.Count = xui_button.Count + 1
+	end
+
+	local o = {
+		type = 'button',
+		context = self.context,
+		Subview = self.Subview,
+		width = width,
+		height = height,
+		con = {
+		},
+	}
+	
+	local layout = xui_button.layout()
+	local style  = layout.style
+	o.con = layout
+	layout.id = Base.id or 'xui.button'..tostring(xui_button.Count)
+	
+	style.width = width
+	style.height = height
+	style.left = xpos
+	style.top = ypos
+	style.backgroundColor = Base.Color or 'white'
+	
+	layout.subviews[1].value = Base.text
+	
+	utils.mergeTable(o.con.style,Base.style)
+	setmetatable(o,{__index = _button})
+	return o
+end
+
+function _button:createView()
+	local context = self.context
+	local view = context:createView(self.con)
+
+	self.layoutView = view
+	return self
+end
+
+function _button:addToSubview()
+	local context = self.context
+	local Subview = self.Subview
+	
+	if not self.layoutView then
+		self:createView()
+	end
+	local view = self.layoutView
+
+	Subview:addSubview(view)
+	self.Subview = view 
+	self.viewSwitch = true
+	return self
+end
+
+
+------------------------------------------------------------------
+local _lable={}
+local xui_lable={
+	Count=0,
+} 
+function _lable:createLayout(Base)
+	Base = Base or {}
+end
+
+
+------------------------------------------------------------------
 local _layout={}
 local xui_layout={
 	Count = 0,	
 }
-function _layout:createLayoutView(Base)
+function _layout:createLayout(Base)
 	Base = Base or {}
 	local xpos = Base.xpos and Base.xpos/100*self.width or 0
 	local ypos = Base.ypos and Base.ypos/100*self.height or 0
@@ -54,10 +151,12 @@ function _layout:createLayoutView(Base)
 	if not Base.id then
 		xui_layout.Count = xui_layout.Count + 1
 	end
+	
 	local o = {
 		type = 'layout',
 		context = self.context or Base.ui.context,
 		Subview = self.layoutView,
+		viewSwitch = false,
 		width = width,
 		height = height,
 		con = {	
@@ -70,10 +169,12 @@ function _layout:createLayoutView(Base)
 				left = xpos,
 				top = ypos,
 				backgroundColor = Base.Color or 'white',
+				['flex-direction'] = Base.sort or 'column'
 			},
 		},
 	}
-	print(o.con.id)
+	
+--	print(o.con.id)
 	utils.mergeTable(o.con.style,Base.style)
 	setmetatable(o,{__index = self})
 	return o
@@ -84,79 +185,47 @@ function _layout:createView()
 	local view = context:createView(self.con)
 
 	self.layoutView = view
-	self.viewSwitch = false
-	return view
+	return self
 end
 
-function _layout:addToRootView(layoutView)
+function _layout:addToRootView()
+	if self.viewSwitch then return end	--防止重复添加
 	local context = self.context
-	local view = layoutView or self:createView()
 	local rootView = context:getRootView()
 
+	if not self.viewSwitch then
+		self:createView()
+	end
+	local view = self.layoutView
+	
 	rootView:addSubview(view)
-	self.Subview = rootView
+	self.Subview = view 
 	self.viewSwitch = true
 	return self
 end
 
-function _layout:addToSubview(layoutView) 
+function _layout:addToSubview() 
+	if self.viewSwitch then return end --防止重复添加
 	local context = self.context
-	local view = layoutView or self:createView()
 	local Subview = self.Subview
+	
+	if not self.viewSwitch then
+		self:createView()
+	end
+	local view = self.layoutView
+	
 	Subview:addSubview(view)
+	self.Subview = view 
 	self.viewSwitch = true
 	return self
 end
 
---/////////////////////////////////////////////////////////////
-local _button={}
-local xui_button={
-	Count = 0,
-}
-function _button:createLayoutView(Base)
-	local xpos = Base.xpos and Base.xpos/100*self.width or 0
-	local ypos = Base.ypos and Base.ypos/100*self.height or 0
-	local width = Base.w/100*self.width
-	local height = Base.h/100*self.height
-
-	local o = {
-		type = 'button',
-		context = self.context,
-		Subview = self.Subview,
-		width = width,
-		height = height,
-		con = {
-			id = Base.id or 'xui.button'..tostring(xui_button.Count),
-			view = 'div',
-			style = {
-				width = width,
-				height = height,
-				left = xpos,
-				top = ypos,
-			},
-		},
-	}
-
-	local text = Base.text
-	setmetatable(o,{__index = self})
+function _layout:createButton(Base)
+	return _button.createLayout(self,Base)
 end
-
-
---/////////////////////////////////////////////////////////////
-local _lable={}
-local xui_lable={
-	Count=0,
-} 
-function _lable:createLayoutView(Base)
-
-end
-
-
---/////////////////////////////////////////////////////////////
+------------------------------------------------------------------
 local _M={
 	rootView = _rootView,
 	layout = _layout,
-	button = _button,
-	lable  = _lable,
 }
 return _M

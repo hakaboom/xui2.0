@@ -2,14 +2,17 @@
 size=0
 
 [RES]
-size=0
+size=1
+1\RESFILE=C:/Users/sszz/Documents/GitHub/xui2.0/xsp/res/1.png
 
 [SOURCE]
-1\SOURCEFILE=/Users/huangziqing/Documents/xspworkspace/xui2.0/xsp/src/main.lua
-2\SOURCEFILE=/Users/huangziqing/Documents/xspworkspace/xui2.0/xsp/src/base.lua
-3\SOURCEFILE=/Users/huangziqing/Documents/xspworkspace/xui2.0/xsp/src/xui/utils.lua
-4\SOURCEFILE=/Users/huangziqing/Documents/xspworkspace/xui2.0/xsp/src/xui/xui.lua
-size=4
+1\SOURCEFILE=C:/Users/sszz/Documents/GitHub/xui2.0/xsp/src/.DS_Store
+2\SOURCEFILE=C:/Users/sszz/Documents/GitHub/xui2.0/xsp/src/base.lua
+3\SOURCEFILE=C:/Users/sszz/Documents/GitHub/xui2.0/xsp/src/main.lua
+4\SOURCEFILE=C:/Users/sszz/Documents/GitHub/xui2.0/xsp/src/xui/utils.lua
+size=5
+5\SOURCEFILE=C:/Users/sszz/Documents/GitHub/xui2.0/xsp/src/xui/xui.lua
 
 [UI]
-size=0
+size=1
+1\UIFILE=C:/Users/sszz/Documents/GitHub/xui2.0/xsp/ui/.DS_Store
