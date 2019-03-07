@@ -48,9 +48,11 @@ local xui_button={
 		return {
 			view = 'div',
 			style = {
+				['backgroundColor:active'] ='#efeff0',
                 ['align-items'] = 'center',
                 ['justify-content'] = 'center',
                 ['border-radius'] = 12,
+				['margin'] = 1,
             },
 			subviews = {
                 {
@@ -63,7 +65,7 @@ local xui_button={
                 }
             }
 		}
-	end
+	end,
 }
 function _button:createLayout(Base)
 	Base = Base or {}
@@ -88,14 +90,14 @@ function _button:createLayout(Base)
 	local layout = xui_button.layout()
 	local style  = layout.style
 	o.con = layout
-	layout.id = Base.id or 'xui.button'..tostring(xui_button.Count)
-	
+	layout.id = utils.buildID('button',(Base.id or xui_button.Count))
+		
 	style.width = width
 	style.height = height
 	style.left = xpos
 	style.top = ypos
 	style.backgroundColor = Base.Color or 'white'
-	
+		
 	layout.subviews[1].value = Base.text
 	
 	utils.mergeTable(o.con.style,Base.style)
@@ -118,25 +120,103 @@ function _button:addToSubview()
 	if not self.layoutView then
 		self:createView()
 	end
-	local view = self.layoutView
 
-	Subview:addSubview(view)
-	self.Subview = view 
+	Subview:addSubview(self.layoutView)
 	self.viewSwitch = true
 	return self
 end
 
+function _button:setActionCallback(callback)
+	local view = self.layoutView
+	local onClicked=function (id,action)
+		local Base={id=id,action=action,view=view}
+		if callback then
+			callback(Base)
+		end
+	end
+	view:setActionCallback(UI.ACTION.CLICK, onClicked)
+    view:setActionCallback(UI.ACTION.LONG_PRESS, onClicked)
+end
+------------------------------------------------------------------
+local _GridSelect={} 
+local xui_GridSelect={
+	Count = 0,
+	select_layout = function ()
+		return {
+			view = 'div',
+            style = {
+                ['flex-direction'] = 'row',
+                ['justify-content'] = 'space-between',
+                ['flex-wrap'] = 'wrap'
+            },
+            subviews = {
 
+            }		
+		}
+	end,
+	option_layout = function ()
+		return {
+			view = 'div',
+			style = {},
+			subviews = {
+				{
+					view = 'text',
+					style = {},
+					value = ''
+				},
+			},
+		}
+	end,
+}
+
+function _gridSelect:createLayout(Base)
+	local	list = Base.list or {}
+	local	style = Base.style or {}
+	local	limit = Base.limit or 999 -- 可选数量
+	local	textColor = style.textColor or '#333333'
+	local	backgroundColor = (style.backgroundColor or style['background-color']) or '#f6f6f6'
+	local	fontSize = (style.fontSize or style['font-size']) or 20
+	local 	borderColor = style.borderColor or 'rgba(0,0,0,0)'
+	local	checkedTextColor = style.checkedTextColor or textColor
+	local	checkedBackgroundColor = style.checkedBackgroundColor or '#c0c0c0'
+	local 	checkedBorderColor	= style.checkedBorderColor or 'rgba(0,0,0,0)'
+	local	disableBorderColor = style.disableBorderColor or 'rgba(0,0,0,0)'
+	local	disableBackgroundColor = style.disableBackgroundColor or '#f6f6f6'
+	local 	disabledTextColor = style.disabledTextColor or '#9b9b9b'
+	
+	Base.w = not Base.w and 100/#list or Base.w
+	Base.lineSpacing = Base.lineSpacing and Base.lineSpacing/100*self.width or 5
+	local	lines = math.floor(100/Base.w)
+	local 	layoutWidth  = Base.w/100*self.width
+	local	layoutHeight = Base.h/100*self.height
+	local	lineSpacing  = (100-(Base.w*lines))/(lines-1)/100*self.width
+	local	columnSpacing = Base.lineSpacing or 12
+	local	column = math.ceil(#list/lines)
+	
+	local layout = xui_GridSelect.select_layout()
+	layout.id = utils.buildID('gridSelect',(Base.id or xui_button.Count))
+end
 ------------------------------------------------------------------
 local _lable={}
 local xui_lable={
 	Count=0,
+	layout=function ()
+		return {
+		
+		}
+	end,
 } 
 function _lable:createLayout(Base)
 	Base = Base or {}
 end
 
+function _lable:createView()
 
+end
+
+function _lable:addToSubview()
+
+end
 ------------------------------------------------------------------
 local _layout={}
 local xui_layout={
@@ -222,6 +302,10 @@ end
 
 function _layout:createButton(Base)
 	return _button.createLayout(self,Base)
+end
+
+function _layout:createLable(Base)
+	return _lable.createLayout(self,Base)
 end
 ------------------------------------------------------------------
 local _M={
