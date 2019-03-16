@@ -9,7 +9,7 @@ function _rootView:createLayout(Base)
 	local width,height = calSacle(rect.width),calSacle(rect.height)
 
 	local o={
-		type = 'root_UI',
+		__tag = 'root_UI',
 		width = width,
 		height = height,
 		rootLayout = {
@@ -68,7 +68,7 @@ local xui_button={
 	end,
 }
 function _button:createLayout(Base)
-	Base = Base or {}
+	local Base = Base or {}
 	local xpos = Base.xpos and Base.xpos/100*self.width or 0
 	local ypos = Base.ypos and Base.ypos/100*self.height or 0
 	local width = (Base.w or 100)/100*self.width
@@ -78,7 +78,7 @@ function _button:createLayout(Base)
 	end
 
 	local o = {
-		type = 'button',
+		__tag = 'button',
 		context = self.context,
 		Subview = self.Subview,
 		width = width,
@@ -138,8 +138,8 @@ function _button:setActionCallback(callback)
     view:setActionCallback(UI.ACTION.LONG_PRESS, onClicked)
 end
 ------------------------------------------------------------------
-local _GridSelect={} 
-local xui_GridSelect={
+local _gridSelect={} 
+local xui_gridSelect={
 	Count = 0,
 	select_layout = function ()
 		return {
@@ -193,29 +193,186 @@ function _gridSelect:createLayout(Base)
 	local	columnSpacing = Base.lineSpacing or 12
 	local	column = math.ceil(#list/lines)
 	
-	local layout = xui_GridSelect.select_layout()
+	local layout = xui_gridSelect.select_layout()
 	layout.id = utils.buildID('gridSelect',(Base.id or xui_button.Count))
+	
+	
 end
 ------------------------------------------------------------------
 local _lable={}
 local xui_lable={
 	Count=0,
-	layout=function ()
+	select_layout=function ()
 		return {
-		
+			view = 'div',
+			style = {
+				['justify-content'] = 'flex-end',
+			},
+			subviews = {
+				{
+					view = 'div',
+					style = {
+						['justify-content'] = 'center',
+						['align-items'] = 'center',
+					},
+					subviews = {
+						{
+							view = 'text',
+							style = {},
+							value = '',
+						},
+					},
+				},
+				{
+					view = 'div',
+					style = {
+						['backgroundColor'] = '#ffffff',
+					},
+					subviews = {},
+				},
+			},
 		}
 	end,
+	config={},
 } 
 function _lable:createLayout(Base)
-	Base = Base or {}
+	local	Base = Base or {}
+	local	xpos = Base.xpos and Base.xpos/100*self.width or 0
+	local	ypos = Base.ypos and Base.ypos/100*self.height or 0
+	local	layoutSort = Base.sort=='column' and 'column' or 'row'
+	local	width = (Base.w or 100) /100*(self.width or ui.width)
+	local	height = (Base.h or 20) /100*(self.height or ui.height)
+	if not Base.id then
+		xui_lable.Count = xui_lable.Count + 1
+	end
+	local o={
+		__tag = 'lable',
+		context = self.context,
+		Subview = self.Subview,
+		width = width,
+		height = height,
+		config = {},
+		con = {
+			id = utils.buildID('lable',(Base.id or xui_lable.Count)),
+			view = 'div',
+			style = {
+				width = width,
+				height = height,
+				left = xpos,
+				top = ypos,
+				backgroundColor = Base.Color or '#4c4a48',
+				['flex-direction'] = layoutSort,
+			},
+			subviews = {
+			},
+		},
+	}
+	
+	local	list = Base.list or {}
+	local 	style = Base.style or {}
+	local	textColor = style.textColor or 'black'
+	local	backgroundColor = (style.backgroundColor or style['background-color']) or '#4c4a48'
+	local	fontSize = (style.fontSize or style['font-size']) or 18
+	local	checkedTextColor = style.checkedTextColor or textColor 
+	local	checkedBackgroundColor = style.checkedBackgroundColor or '#ffffff'
+	local	disabledTextColor = style.disableTextColor or textColor
+	local	disabledBackgroundColor = style.disableBackgroundColor or '#4c4a48'
+
+	local	layout = o.con.subviews
+	for i=1,#list do
+		local value = list[i].value
+		local select_layout = xui_lable.select_layout()
+		select_layout.id = o.con.id .. '@' ..value
+		
+		local selectStyle = select_layout.style
+		selectStyle['width'] = layoutSort=='column' and width or width*0.2
+		selectStyle['height'] = layoutSort=='column' and height*0.2 or height
+		
+		local textView = select_layout.subviews[1]
+		local textViewStyle = textView.style
+		textViewStyle['width'] = selectStyle['width']
+		textViewStyle['height'] = selectStyle['height']*0.95
+		textViewStyle['backgroundColor'] = i==1 and checkedBackgroundColor or disabledBackgroundColor
+		local textValueStyle = textView.subviews[1].style
+		textValueStyle['fontSize'] = fontSize
+		textValueStyle['textColor'] = i==1 and checkedTextColor or disabledTextColor
+		textView.subviews[1].value = value or ''
+		
+		local bottomView = select_layout.subviews[2]
+		local bottomViewStyle = bottomView.style
+		bottomViewStyle['width'] = selectStyle['width']
+		bottomViewStyle['height'] = selectStyle['height']*0.05
+		bottomViewStyle['backgroundColor'] = checkedBackgroundColor
+		
+		layout[i] = select_layout
+		
+		local checked = i==1 and true or false
+		local disable = not checked
+		if i==1 then o.config.checkedIndex = select_layout.id end
+		o.config[select_layout.id] = {index = i,value = value,checked = checked,disabled = disabled}
+		o.config[select_layout.id].color = {
+			checkedTextColor = checkedTextColor,checkedBackgroundColor = checkedBackgroundColor,
+			disabledTextColor = disabledTextColor,disabledBackgroundColor = disabledBackgroundColor}
+	end
+
+	setmetatable(o,{__index = _lable})
+	return o
+end
+
+function _lable:setActionCallback(callback)
+	local view = self.layoutView
+	local config = self.config
+
+	local onClicked = function(id,action)
+		if id~=config.checkedIndex then
+			local color = config[id].color
+			local subview = view:getSubview(config[id].index)
+			subview:getSubview(1):setStyle({
+				backgroundColor = color.checkedBackgroundColor
+			})
+			subview:getSubview(1):getSubview(1):setStyle({
+				textColor = color.checkedTextColor
+			})
+			
+			local checkedView = view:getSubview(config[config.checkedIndex].index)
+			checkedView:getSubview(1):setStyle({
+				backgroundColor = color.disabledBackgroundColor
+			})
+			checkedView:getSubview(1):getSubview(1):setStyle({
+				textColor = color.disableCheckedTextColor
+			})
+			config.checkedIndex = id
+		end
+	end
+	
+	local subviewsCount = view:subviewsCount()
+	for i = 1, subviewsCount do
+		local subview = view:getSubview(i)
+		subview:setActionCallback(UI.ACTION.CLICK, onClicked)
+		subview:setActionCallback(UI.ACTION.LONG_PRESS, onClicked)
+	end
+	return self
 end
 
 function _lable:createView()
+	local context = self.context
+	local view = context:createView(self.con)
 
+	self.layoutView = view
+	return self
 end
 
 function _lable:addToSubview()
-
+	local context = self.context
+	local Subview = self.Subview
+	
+	if not self.layoutView then
+		self:createView()
+	end
+	
+	Subview:addSubview(self.layoutView)
+	self.viewSwitch = treu
+	return self
 end
 ------------------------------------------------------------------
 local _layout={}
@@ -223,7 +380,7 @@ local xui_layout={
 	Count = 0,	
 }
 function _layout:createLayout(Base)
-	Base = Base or {}
+	local Base = Base or {}
 	local xpos = Base.xpos and Base.xpos/100*self.width or 0
 	local ypos = Base.ypos and Base.ypos/100*self.height or 0
 	local width = (Base.w or 100) /100*(self.width or ui.width)
@@ -233,7 +390,7 @@ function _layout:createLayout(Base)
 	end
 	
 	local o = {
-		type = 'layout',
+		__tag = 'layout',
 		context = self.context or Base.ui.context,
 		Subview = self.layoutView,
 		viewSwitch = false,
@@ -248,13 +405,13 @@ function _layout:createLayout(Base)
 				height = height,
 				left = xpos,
 				top = ypos,
-				backgroundColor = Base.Color or 'white',
+				backgroundColor = Base.Color or 'rgb(255,255,255)',
 				['flex-direction'] = Base.sort or 'column'
 			},
 		},
 	}
 	
---	print(o.con.id)
+	--	print(o.con.id)
 	utils.mergeTable(o.con.style,Base.style)
 	setmetatable(o,{__index = self})
 	return o
