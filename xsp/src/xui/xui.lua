@@ -51,15 +51,14 @@ local xui_button={
 				['backgroundColor:active'] ='#efeff0',
                 ['align-items'] = 'center',
                 ['justify-content'] = 'center',
-                ['border-radius'] = 12,
-				['margin'] = 1,
+                ['border-radius'] = 15,
             },
 			subviews = {
                 {
                     view = 'text',
                     style = {
                         ['text-overflow'] = 'ellipsis',
-                        ['font-size'] = 25,
+                        ['font-size'] = 15,
                         lines = 1,
                     }
                 }
@@ -88,19 +87,15 @@ function _button:createLayout(Base)
 	}
 	
 	local layout = xui_button.layout()
-	local style  = layout.style
-	o.con = layout
 	layout.id = utils.buildID('button',(Base.id or xui_button.Count))
-		
-	style.width = width
-	style.height = height
-	style.left = xpos
-	style.top = ypos
-	style.backgroundColor = Base.Color or 'white'
+	utils.mergeTable(layout.style,{
+		width = width,height = height,left = xpos,top = ypos,
+		backgroundColor  = (Base.Color or 'white'),
+	})
 		
 	layout.subviews[1].value = Base.text
-	
-	utils.mergeTable(o.con.style,Base.style)
+
+	o.con = layout
 	setmetatable(o,{__index = _button})
 	return o
 end
@@ -206,7 +201,7 @@ local xui_lable={
 		return {
 			view = 'div',
 			style = {
-				['justify-content'] = 'flex-end',
+				['align-items'] = 'center',
 			},
 			subviews = {
 				{
@@ -226,7 +221,6 @@ local xui_lable={
 				{
 					view = 'div',
 					style = {
-						['backgroundColor'] = '#ffffff',
 					},
 					subviews = {},
 				},
@@ -240,11 +234,12 @@ function _lable:createLayout(Base)
 	local	xpos = Base.xpos and Base.xpos/100*self.width or 0
 	local	ypos = Base.ypos and Base.ypos/100*self.height or 0
 	local	layoutSort = Base.sort=='column' and 'column' or 'row'
-	local	width = (Base.w or 100) /100*(self.width or ui.width)
-	local	height = (Base.h or 20) /100*(self.height or ui.height)
+	local	width = math.floor((Base.w or 100) /100*(self.width or ui.width))
+	local	height = math.floor((Base.h or 100) /100*(self.height or ui.height))
 	if not Base.id then
 		xui_lable.Count = xui_lable.Count + 1
 	end
+	
 	local o={
 		__tag = 'lable',
 		context = self.context,
@@ -254,13 +249,14 @@ function _lable:createLayout(Base)
 		config = {},
 		con = {
 			id = utils.buildID('lable',(Base.id or xui_lable.Count)),
-			view = 'div',
+			view = 'scroller',
+			['scroll-direction'] = layoutSort == 'row' and 'horizontal' or 'vertical',
 			style = {
 				width = width,
 				height = height,
 				left = xpos,
 				top = ypos,
-				backgroundColor = Base.Color or '#4c4a48',
+				backgroundColor = Base.Color or '#ffffff',
 				['flex-direction'] = layoutSort,
 			},
 			subviews = {
@@ -270,39 +266,44 @@ function _lable:createLayout(Base)
 	
 	local	list = Base.list or {}
 	local 	style = Base.style or {}
-	local	textColor = style.textColor or 'black'
-	local	backgroundColor = (style.backgroundColor or style['background-color']) or '#4c4a48'
-	local	fontSize = (style.fontSize or style['font-size']) or 18
-	local	checkedTextColor = style.checkedTextColor or textColor 
+	local 	selectWidth = style.selectWidth or width*0.2
+	local 	selectHeight = style.selectHeight or height*0.2
+	local	fontSize = (style.fontSize or style['font-size']) or 16
+	local	checkedTextColor = style.textColor or '#000000' 
 	local	checkedBackgroundColor = style.checkedBackgroundColor or '#ffffff'
-	local	disabledTextColor = style.disableTextColor or textColor
-	local	disabledBackgroundColor = style.disableBackgroundColor or '#4c4a48'
-
+	local	disabledTextColor = style.disableTextColor or '#b0b0b0'
+	local	disabledBackgroundColor = style.disableBackgroundColor or '#000000'
+	local	checkedBottomColor = style.checkedBottomColor or '#000000'
+	local	disableBottomColor = style.disableBottomColor or '#ffffff'
+	
 	local	layout = o.con.subviews
 	for i=1,#list do
 		local value = list[i].value
 		local select_layout = xui_lable.select_layout()
-		select_layout.id = o.con.id .. '@' ..value
+		select_layout.id = o.con.id .. '@' .. value
 		
 		local selectStyle = select_layout.style
-		selectStyle['width'] = layoutSort=='column' and width or width*0.2
-		selectStyle['height'] = layoutSort=='column' and height*0.2 or height
+		selectStyle['width'] = layoutSort=='column' and width or selectWidth
+		selectStyle['height'] = layoutSort=='column' and selectHeight or height
+		
 		
 		local textView = select_layout.subviews[1]
 		local textViewStyle = textView.style
 		textViewStyle['width'] = selectStyle['width']
-		textViewStyle['height'] = selectStyle['height']*0.95
-		textViewStyle['backgroundColor'] = i==1 and checkedBackgroundColor or disabledBackgroundColor
+		textViewStyle['height'] = selectStyle['height']*0.9
+
+		
 		local textValueStyle = textView.subviews[1].style
 		textValueStyle['fontSize'] = fontSize
-		textValueStyle['textColor'] = i==1 and checkedTextColor or disabledTextColor
+		textValueStyle['color'] = i==1 and checkedTextColor or disabledTextColor
 		textView.subviews[1].value = value or ''
+		
 		
 		local bottomView = select_layout.subviews[2]
 		local bottomViewStyle = bottomView.style
-		bottomViewStyle['width'] = selectStyle['width']
-		bottomViewStyle['height'] = selectStyle['height']*0.05
-		bottomViewStyle['backgroundColor'] = checkedBackgroundColor
+		bottomViewStyle['width'] = selectStyle['width']*0.75
+		bottomViewStyle['height'] = selectStyle['height']-textViewStyle['height']
+		bottomViewStyle['backgroundColor'] = i==1 and checkedBottomColor or disableBottomColor
 		
 		layout[i] = select_layout
 		
@@ -312,7 +313,8 @@ function _lable:createLayout(Base)
 		o.config[select_layout.id] = {index = i,value = value,checked = checked,disabled = disabled}
 		o.config[select_layout.id].color = {
 			checkedTextColor = checkedTextColor,checkedBackgroundColor = checkedBackgroundColor,
-			disabledTextColor = disabledTextColor,disabledBackgroundColor = disabledBackgroundColor}
+			disabledTextColor = disabledTextColor,disabledBackgroundColor = disabledBackgroundColor,
+			checkedBottomColor = checkedBottomColor,disableBottomColor = disableBottomColor}
 	end
 
 	setmetatable(o,{__index = _lable})
@@ -326,20 +328,21 @@ function _lable:setActionCallback(callback)
 	local onClicked = function(id,action)
 		if id~=config.checkedIndex then
 			local color = config[id].color
+			--checked 
 			local subview = view:getSubview(config[id].index)
-			subview:getSubview(1):setStyle({
-				backgroundColor = color.checkedBackgroundColor
-			})
 			subview:getSubview(1):getSubview(1):setStyle({
-				textColor = color.checkedTextColor
+				color = color.checkedTextColor
 			})
-			
+			subview:getSubview(2):setStyle({
+				backgroundColor = color.checkedBottomColor
+			})
+			--disable
 			local checkedView = view:getSubview(config[config.checkedIndex].index)
-			checkedView:getSubview(1):setStyle({
-				backgroundColor = color.disabledBackgroundColor
-			})
 			checkedView:getSubview(1):getSubview(1):setStyle({
-				textColor = color.disableCheckedTextColor
+				color = color.disabledTextColor
+			})
+			checkedView:getSubview(2):setStyle({
+				backgroundColor = color.disableBottomColor
 			})
 			config.checkedIndex = id
 		end
@@ -383,8 +386,8 @@ function _layout:createLayout(Base)
 	local Base = Base or {}
 	local xpos = Base.xpos and Base.xpos/100*self.width or 0
 	local ypos = Base.ypos and Base.ypos/100*self.height or 0
-	local width = (Base.w or 100) /100*(self.width or ui.width)
-	local height = (Base.h or 20) /100*(self.height or ui.height)
+	local width = math.floor((Base.w or 100) /100*(self.width or ui.width))
+	local height = math.floor((Base.h or 100) /100*(self.height or ui.height))
 	if not Base.id then
 		xui_layout.Count = xui_layout.Count + 1
 	end
@@ -411,7 +414,6 @@ function _layout:createLayout(Base)
 		},
 	}
 	
-	--	print(o.con.id)
 	utils.mergeTable(o.con.style,Base.style)
 	setmetatable(o,{__index = self})
 	return o
