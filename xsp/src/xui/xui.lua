@@ -227,8 +227,83 @@ local xui_lable={
 			},
 		}
 	end,
+	page_layout=function ()
+		return {
+			view = 'div',
+			style = {},
+			subviews = {
+			},
+		}
+	end,
 	config={},
 } 
+function _lable:buildSelect(list)
+	local o={
+		view = 'scroller',
+		style = {},
+		subviews = {},
+	}
+	local list = list or {}
+	local style = list.style or {}
+	local width = layoutSort =='column' and self.width or self.width*0.2
+	local height = layoutSort =='column' and self.height*0.2 or self.width
+	local layoutSort = self.con.style['flex-direction']
+	local selectWidth = layoutSort =='column' and width or width*0.15
+	local selectHeight = layoutSort =='column' and height*0.15 or width
+	local fontSize = (style.fontSize or style['font-size']) or 18
+	local checkedTextColor = style.checkedTextColor or '#000000'
+	local checkedBackgroundColor = style.checkedBackgroundColor or '#ffffff'
+	local disabledTextColor = style.disabledTextColor or '#b0b0b0'
+	local disabledBackgroundColor = style.disableBackgroundColor or '#000000'
+	local checkedBottomColor = style.checkedBottomColor or '#000000'
+	local disableBottomColor = style.disableBottomColor or '#ffffff'
+	
+	o.style={
+		width = width,
+		height = height,
+		['flex-direction'] = layoutSort,
+		backgroundColor = 'red',
+	}
+	
+	local subviews = o.subviews
+	for i=1, #list do
+		local value = list[i].value or ''
+		local layout = xui_lable.select_layout()
+		layout.id = self.con.id ..'@'.. value
+		subviews[i] = layout
+		
+		local layoutStyle = layout.style
+		layoutStyle['width']  = selectWidth
+		layoutStyle['height'] = selectHeight
+		
+		local textView = layout.subviews[1]
+		local textViewStyle = textView.style
+		textViewStyle['width']  = layoutStyle['width']
+		textViewStyle['height'] = layoutStyle['height']*0.9		
+		
+		local textValueStyle = textView.subviews[1].style
+		textValueStyle['font-size'] = fontSize
+		textValueStyle['color'] = i==1 and checkedTextColor or disabledTextColor
+		textView.subviews[1].value = value
+		
+		local bottomView = layout.subviews[2]
+		local bottomViewStyle = bottomView.style
+		bottomViewStyle['width']  = layoutStyle['width']*0.75
+		bottomViewStyle['height'] = layoutStyle['height']-textViewStyle['height']
+		bottomViewStyle['backgroundColor'] = i==1 and checkedBottomColor or disableBottomColor
+		
+		local checked =  i==1 and true or false
+		local disable = not checked
+		if i==1 then self.config.checkedIndex = layout.id end
+		self.config[layout.id] = {index = i,value = value,checked = checked,disabled = disabled}
+		self.config[layout.id].color = {
+			checkedTextColor = checkedTextColor,checkedBackgroundColor = checkedBackgroundColor,
+			disabledTextColor = disabledTextColor,disabledBackgroundColor = disabledBackgroundColor,
+			checkedBottomColor = checkedBottomColor,disableBottomColor = disableBottomColor}
+	end
+
+	return o
+end
 function _lable:createLayout(Base)
 	local	Base = Base or {}
 	local	xpos = Base.xpos and Base.xpos/100*self.width or 0
@@ -249,8 +324,7 @@ function _lable:createLayout(Base)
 		config = {},
 		con = {
 			id = utils.buildID('lable',(Base.id or xui_lable.Count)),
-			view = 'scroller',
-			['scroll-direction'] = layoutSort == 'row' and 'horizontal' or 'vertical',
+			view = 'div',
 			style = {
 				width = width,
 				height = height,
@@ -266,57 +340,11 @@ function _lable:createLayout(Base)
 	
 	local	list = Base.list or {}
 	local 	style = Base.style or {}
-	local 	selectWidth = style.selectWidth or width*0.2
-	local 	selectHeight = style.selectHeight or height*0.2
-	local	fontSize = (style.fontSize or style['font-size']) or 16
-	local	checkedTextColor = style.textColor or '#000000' 
-	local	checkedBackgroundColor = style.checkedBackgroundColor or '#ffffff'
-	local	disabledTextColor = style.disableTextColor or '#b0b0b0'
-	local	disabledBackgroundColor = style.disableBackgroundColor or '#000000'
-	local	checkedBottomColor = style.checkedBottomColor or '#000000'
-	local	disableBottomColor = style.disableBottomColor or '#ffffff'
+
+	local selectView = _lable.buildSelect(o,list)
+	o.con.subviews[1] = selectView
 	
-	local	layout = o.con.subviews
-	for i=1,#list do
-		local value = list[i].value
-		local select_layout = xui_lable.select_layout()
-		select_layout.id = o.con.id .. '@' .. value
-		
-		local selectStyle = select_layout.style
-		selectStyle['width'] = layoutSort=='column' and width or selectWidth
-		selectStyle['height'] = layoutSort=='column' and selectHeight or height
-		
-		
-		local textView = select_layout.subviews[1]
-		local textViewStyle = textView.style
-		textViewStyle['width'] = selectStyle['width']
-		textViewStyle['height'] = selectStyle['height']*0.9
-
-		
-		local textValueStyle = textView.subviews[1].style
-		textValueStyle['fontSize'] = fontSize
-		textValueStyle['color'] = i==1 and checkedTextColor or disabledTextColor
-		textView.subviews[1].value = value or ''
-		
-		
-		local bottomView = select_layout.subviews[2]
-		local bottomViewStyle = bottomView.style
-		bottomViewStyle['width'] = selectStyle['width']*0.75
-		bottomViewStyle['height'] = selectStyle['height']-textViewStyle['height']
-		bottomViewStyle['backgroundColor'] = i==1 and checkedBottomColor or disableBottomColor
-		
-		layout[i] = select_layout
-		
-		local checked = i==1 and true or false
-		local disable = not checked
-		if i==1 then o.config.checkedIndex = select_layout.id end
-		o.config[select_layout.id] = {index = i,value = value,checked = checked,disabled = disabled}
-		o.config[select_layout.id].color = {
-			checkedTextColor = checkedTextColor,checkedBackgroundColor = checkedBackgroundColor,
-			disabledTextColor = disabledTextColor,disabledBackgroundColor = disabledBackgroundColor,
-			checkedBottomColor = checkedBottomColor,disableBottomColor = disableBottomColor}
-	end
-
+	
 	setmetatable(o,{__index = _lable})
 	return o
 end
@@ -327,9 +355,10 @@ function _lable:setActionCallback(callback)
 
 	local onClicked = function(id,action)
 		if id~=config.checkedIndex then
+			local selectView = view:getSubview(1)
 			local color = config[id].color
 			--checked 
-			local subview = view:getSubview(config[id].index)
+			local subview = selectView:getSubview(config[id].index)
 			subview:getSubview(1):getSubview(1):setStyle({
 				color = color.checkedTextColor
 			})
@@ -337,7 +366,7 @@ function _lable:setActionCallback(callback)
 				backgroundColor = color.checkedBottomColor
 			})
 			--disable
-			local checkedView = view:getSubview(config[config.checkedIndex].index)
+			local checkedView = selectView:getSubview(config[config.checkedIndex].index)
 			checkedView:getSubview(1):getSubview(1):setStyle({
 				color = color.disabledTextColor
 			})
@@ -348,9 +377,10 @@ function _lable:setActionCallback(callback)
 		end
 	end
 	
-	local subviewsCount = view:subviewsCount()
+	local selectView = view:getSubview(1)
+	local subviewsCount = selectView:subviewsCount()
 	for i = 1, subviewsCount do
-		local subview = view:getSubview(i)
+		local subview = selectView:getSubview(i)
 		subview:setActionCallback(UI.ACTION.CLICK, onClicked)
 		subview:setActionCallback(UI.ACTION.LONG_PRESS, onClicked)
 	end
