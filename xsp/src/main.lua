@@ -8,11 +8,16 @@ ui:creatContext()
 title=layout:createLayout({ui=ui,w=100,h=10,sort='row'}):addToRootView()
 title:createButton({w=20,text="111111"}):addToSubview():setActionCallback(function() show=false end)
 
-lable=layout:createLayout({ui=ui,w=100,h=80}):addToRootView()
+lable=layout:createLayout({ui=ui,w=100,h=80,id='aa'}):addToRootView()
 lable:createLable({
-	list={{value='主菜单'}},
-}):addToSubview()
---:setActionCallback(function(...)Print(...) end)
+	list={{value='1'},{value='2'},{value='3'},{value='4'},{value='5'}},
+	titleStyle={
+	
+	},
+	tabStyle={
+	
+	},
+}):addToSubview():setActionCallback(function(...)Print(...) end)
 
 
 
@@ -38,6 +43,6 @@ lable:createLable({
 
 ui:show()
 while show do
-	sleep(100)
+	sleep(1000)
 end
 

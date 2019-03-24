@@ -28,16 +28,106 @@ function _rootView:createLayout(Base)
 	setmetatable(o,{__index = self})
 	return o
 end
-
 function _rootView:creatContext()
 	local context = UI.createContext(self.rootLayout,self.globalStyle)
 	self.context = context
 	return context
 end
-
 function _rootView:show()
 	local context = self.context
 	context:show()
+end
+
+
+------------------------------------------------------------------
+local _layout={}
+local xui_layout={
+	Count = 0,	
+}
+function _layout:createLayout(Base)
+	local Base = Base or {}
+	local xpos = Base.xpos and Base.xpos/100*self.width or 0
+	local ypos = Base.ypos and Base.ypos/100*self.height or 0
+	local width = math.floor((Base.w or 100) /100*(self.width or ui.width))
+	local height = math.floor((Base.h or 100) /100*(self.height or ui.height))
+	if not Base.id then
+		xui_layout.Count = xui_layout.Count + 1
+	end
+	
+	local o = {
+		__tag = 'layout',
+		context = self.context or Base.ui.context,
+		parentView = self.layoutView,
+		viewSwitch = false,
+		width = width,
+		height = height,
+		con = {	
+			id = Base.id or 'xui.layout'..tostring(xui_layout.Count),
+			view = Base.view or 'div',
+			class = Base.class,
+			style ={
+				width = width,
+				height = height,
+				left = xpos,
+				top = ypos,
+				backgroundColor = Base.Color or 'rgb(255,255,255)',
+				['flex-direction'] = Base.sort or 'column'
+			},
+		},
+	}
+	
+	utils.mergeTable(o.con.style,Base.style)
+	setmetatable(o,{__index = self})
+	return o
+end
+function _layout:createView()
+	local context = self.context
+	local view = context:createView(self.con)
+
+	self.layoutView = view
+	return self
+end
+function _layout:addToRootView()
+	if self.viewSwitch then return end	--防止重复添加
+	local context = self.context
+	local rootView = context:getRootView()
+
+	if not self.layoutView then
+		self:createView()
+	end
+	
+	rootView:addSubview(self.layoutView)
+	self.viewSwitch = true
+	return self
+end
+function _layout:addToSubview() 
+	if self.viewSwitch then return end --防止重复添加
+	local context = self.context
+	local parentView = self.parentView
+
+	if not self.layoutView then
+		self:createView()
+	end
+	
+	parentView:addSubview(self.layoutView)
+	self.viewSwitch = true
+	return self
+end
+function _layout:setStyle(styles)	--styles need table
+	if not layoutView then
+		local layoutStyle = self.con.style
+		utils.mergeTable(layoutStyle,styles)
+	else
+		local view = self.layoutView
+		view:setStyle(styles)
+	end
+end
+function _layout:getView()
+	return self.con
+end
+function _layout:getID()
+	local id = self.con.id
+	return id
 end
 
 ------------------------------------------------------------------
@@ -79,7 +169,7 @@ function _button:createLayout(Base)
 	local o = {
 		__tag = 'button',
 		context = self.context,
-		Subview = self.Subview,
+		parentView = self.layoutView,
 		width = width,
 		height = height,
 		con = {
@@ -99,7 +189,6 @@ function _button:createLayout(Base)
 	setmetatable(o,{__index = _button})
 	return o
 end
-
 function _button:createView()
 	local context = self.context
 	local view = context:createView(self.con)
@@ -107,20 +196,18 @@ function _button:createView()
 	self.layoutView = view
 	return self
 end
-
 function _button:addToSubview()
 	local context = self.context
-	local Subview = self.Subview
+	local parentView = self.parentView
 	
 	if not self.layoutView then
 		self:createView()
 	end
 
-	Subview:addSubview(self.layoutView)
+	parentView:addSubview(self.layoutView)
 	self.viewSwitch = true
 	return self
 end
-
 function _button:setActionCallback(callback)
 	local view = self.layoutView
 	local onClicked=function (id,action)
@@ -132,6 +219,10 @@ function _button:setActionCallback(callback)
 	view:setActionCallback(UI.ACTION.CLICK, onClicked)
     view:setActionCallback(UI.ACTION.LONG_PRESS, onClicked)
 end
+function _layout:createButton(Base)
+	return _button.createLayout(self,Base)
+end
+
 ------------------------------------------------------------------
 local _gridSelect={} 
 local xui_gridSelect={
@@ -163,7 +254,6 @@ local xui_gridSelect={
 		}
 	end,
 }
-
 function _gridSelect:createLayout(Base)
 	local	list = Base.list or {}
 	local	style = Base.style or {}
@@ -227,30 +317,32 @@ local xui_lable={
 			},
 		}
 	end,
-	page_layout=function ()
+	tab_layout=function ()
 		return {
 			view = 'div',
-			style = {},
-			subviews = {
+			style = {
+				backgroundColor ='red',
 			},
+			subviews = {},
 		}
 	end,
 	config={},
 } 
-function _lable:buildSelect(list)
+function _lable:buildSelect(list,style)
 	local o={
 		view = 'scroller',
 		style = {},
 		subviews = {},
 	}
+	
 	local list = list or {}
-	local style = list.style or {}
-	local width = layoutSort =='column' and self.width or self.width*0.2
-	local height = layoutSort =='column' and self.height*0.2 or self.width
+	local style = style or {}
 	local layoutSort = self.con.style['flex-direction']
-	local selectWidth = layoutSort =='column' and width or width*0.15
-	local selectHeight = layoutSort =='column' and height*0.15 or width
-	local fontSize = (style.fontSize or style['font-size']) or 18
+	local width  =	layoutSort =='column' and self.width or self.width*0.15
+	local height =	layoutSort =='column' and self.height*0.15 or self.height
+	local selectWidth  = layoutSort =='column' and width*0.15 or width
+	local selectHeight = layoutSort =='column' and height or height*0.15
+	local fontSize = (style.fontSize or style['font-size']) or 15
 	local checkedTextColor = style.checkedTextColor or '#000000'
 	local checkedBackgroundColor = style.checkedBackgroundColor or '#ffffff'
 	local disabledTextColor = style.disabledTextColor or '#b0b0b0'
@@ -259,11 +351,9 @@ function _lable:buildSelect(list)
 	local disableBottomColor = style.disableBottomColor or '#ffffff'
 	
 	o.style={
-		width = width,
-		height = height,
-		['flex-direction'] = layoutSort,
-		backgroundColor = 'red',
+		['flex-direction'] = layoutSort=='column' and 'row' or 'column',
 	}
+	o['scroll-direction'] = o.style['flex-direction']=='column' and 'vertical' or 'horizontal'
 	
 	local subviews = o.subviews
 	for i=1, #list do
@@ -273,24 +363,24 @@ function _lable:buildSelect(list)
 		subviews[i] = layout
 		
 		local layoutStyle = layout.style
-		layoutStyle['width']  = selectWidth
-		layoutStyle['height'] = selectHeight
+		layoutStyle.width  = selectWidth
+		layoutStyle.height = selectHeight
 		
 		local textView = layout.subviews[1]
 		local textViewStyle = textView.style
-		textViewStyle['width']  = layoutStyle['width']
-		textViewStyle['height'] = layoutStyle['height']*0.9		
+		textViewStyle.width  = layoutStyle.width
+		textViewStyle.height = layoutStyle.height*0.9		
 		
 		local textValueStyle = textView.subviews[1].style
 		textValueStyle['font-size'] = fontSize
-		textValueStyle['color'] = i==1 and checkedTextColor or disabledTextColor
+		textValueStyle.color = i==1 and checkedTextColor or disabledTextColor
 		textView.subviews[1].value = value
 		
 		local bottomView = layout.subviews[2]
 		local bottomViewStyle = bottomView.style
-		bottomViewStyle['width']  = layoutStyle['width']*0.75
-		bottomViewStyle['height'] = layoutStyle['height']-textViewStyle['height']
-		bottomViewStyle['backgroundColor'] = i==1 and checkedBottomColor or disableBottomColor
+		bottomViewStyle.width  = layoutStyle.width*0.75
+		bottomViewStyle.height = layoutStyle.height-textViewStyle.height
+		bottomViewStyle.backgroundColor = i==1 and checkedBottomColor or disableBottomColor
 		
 		local checked =  i==1 and true or false
 		local disable = not checked
@@ -304,11 +394,43 @@ function _lable:buildSelect(list)
 
 	return o
 end
+function _lable:buildTab(list,style)
+	local o={
+		view = 'div',
+		style = {},
+		subviews = {},
+	}
+	
+	local list = list or {}
+	local style = style or {}
+	local width = style.width
+	local height = style.height
+	local backgroundColor = style.backgroundColor or '#ffffff'
+	
+	o.style.width = width
+	o.style.height = height
+	local t={
+		'red','blue','black','yellow','purple'
+	}
+	for i=1, #list do
+		local	tabView = _layout:createLayout({ui=self,id=list[i].value})
+			tabView:setStyle({
+				width=width,
+				height=height,
+				backgroundColor = t[i],
+				left = ( i - 1 )*( -1 * width),
+			})
+
+			o.subviews[i] = tabView:getView()
+	end
+	
+	return o
+end
 function _lable:createLayout(Base)
 	local	Base = Base or {}
 	local	xpos = Base.xpos and Base.xpos/100*self.width or 0
 	local	ypos = Base.ypos and Base.ypos/100*self.height or 0
-	local	layoutSort = Base.sort=='column' and 'column' or 'row'
+	local	layoutSort = Base.sort=='row' and 'row' or 'column'
 	local	width = math.floor((Base.w or 100) /100*(self.width or ui.width))
 	local	height = math.floor((Base.h or 100) /100*(self.height or ui.height))
 	if not Base.id then
@@ -318,7 +440,7 @@ function _lable:createLayout(Base)
 	local o={
 		__tag = 'lable',
 		context = self.context,
-		Subview = self.Subview,
+		parentView = self.layoutView,
 		width = width,
 		height = height,
 		config = {},
@@ -339,16 +461,27 @@ function _lable:createLayout(Base)
 	}
 	
 	local	list = Base.list or {}
-	local 	style = Base.style or {}
+	local	titleStyle = Base.titleStyle or {}
+	local 	tabStyle = Base.tabStyle or {}
 
-	local selectView = _lable.buildSelect(o,list)
+	local selectView = _lable.buildSelect(o,list,titleStyle)
+	local selectWidth  = layoutSort =='column' and width or width*0.15
+	local selectHeight = layoutSort =='column' and height*0.15 or height
+	selectView.style.width = selectWidth
+	selectView.style['max-height'] = selectHeight
 	o.con.subviews[1] = selectView
 	
 	
+	tabStyle.width = tabStyle.width or (layoutSort == 'column' and selectWidth or (width-selectWidth) )
+	tabStyle.height = tabStyle.height or (layoutSort == 'column' and (height-selectHeight) or selectHeight )
+	local tabView = _lable.buildTab(o,list,tabStyle)
+	o.con.subviews[2] = tabView
+	o.tabWidth = tabStyle.width
+	o.tabHeight = tabStyle.height
+
 	setmetatable(o,{__index = _lable})
 	return o
 end
-
 function _lable:setActionCallback(callback)
 	local view = self.layoutView
 	local config = self.config
@@ -373,7 +506,14 @@ function _lable:setActionCallback(callback)
 			checkedView:getSubview(2):setStyle({
 				backgroundColor = color.disableBottomColor
 			})
+
 			config.checkedIndex = id
+			
+
+		end
+		
+		if callback then
+			callback()
 		end
 	end
 	
@@ -384,9 +524,9 @@ function _lable:setActionCallback(callback)
 		subview:setActionCallback(UI.ACTION.CLICK, onClicked)
 		subview:setActionCallback(UI.ACTION.LONG_PRESS, onClicked)
 	end
+	
 	return self
 end
-
 function _lable:createView()
 	local context = self.context
 	local view = context:createView(self.con)
@@ -394,109 +534,25 @@ function _lable:createView()
 	self.layoutView = view
 	return self
 end
-
 function _lable:addToSubview()
 	local context = self.context
-	local Subview = self.Subview
+	local parentView = self.parentView
 	
 	if not self.layoutView then
 		self:createView()
 	end
-	
-	Subview:addSubview(self.layoutView)
-	self.viewSwitch = treu
-	return self
-end
-------------------------------------------------------------------
-local _layout={}
-local xui_layout={
-	Count = 0,	
-}
-function _layout:createLayout(Base)
-	local Base = Base or {}
-	local xpos = Base.xpos and Base.xpos/100*self.width or 0
-	local ypos = Base.ypos and Base.ypos/100*self.height or 0
-	local width = math.floor((Base.w or 100) /100*(self.width or ui.width))
-	local height = math.floor((Base.h or 100) /100*(self.height or ui.height))
-	if not Base.id then
-		xui_layout.Count = xui_layout.Count + 1
-	end
-	
-	local o = {
-		__tag = 'layout',
-		context = self.context or Base.ui.context,
-		Subview = self.layoutView,
-		viewSwitch = false,
-		width = width,
-		height = height,
-		con = {	
-			id = Base.id or 'xui.layout'..tostring(xui_layout.Count),
-			view = Base.view or 'div',
-			class = Base.class,
-			style ={
-				width = width,
-				height = height,
-				left = xpos,
-				top = ypos,
-				backgroundColor = Base.Color or 'rgb(255,255,255)',
-				['flex-direction'] = Base.sort or 'column'
-			},
-		},
-	}
-	
-	utils.mergeTable(o.con.style,Base.style)
-	setmetatable(o,{__index = self})
-	return o
-end
 
-function _layout:createView()
-	local context = self.context
-	local view = context:createView(self.con)
-
-	self.layoutView = view
-	return self
-end
-
-function _layout:addToRootView()
-	if self.viewSwitch then return end	--防止重复添加
-	local context = self.context
-	local rootView = context:getRootView()
-
-	if not self.viewSwitch then
-		self:createView()
-	end
-	local view = self.layoutView
-	
-	rootView:addSubview(view)
-	self.Subview = view 
+	parentView:addSubview(self.layoutView)
 	self.viewSwitch = true
 	return self
 end
-
-function _layout:addToSubview() 
-	if self.viewSwitch then return end --防止重复添加
-	local context = self.context
-	local Subview = self.Subview
-	
-	if not self.viewSwitch then
-		self:createView()
-	end
-	local view = self.layoutView
-	
-	Subview:addSubview(view)
-	self.Subview = view 
-	self.viewSwitch = true
-	return self
-end
-
-function _layout:createButton(Base)
-	return _button.createLayout(self,Base)
-end
-
 function _layout:createLable(Base)
 	return _lable.createLayout(self,Base)
 end
+
+
 ------------------------------------------------------------------
+
 local _M={
 	rootView = _rootView,
 	layout = _layout,
