@@ -9,7 +9,7 @@ title=layout:createLayout({ui=ui,w=100,h=10,sort='row'}):addToRootView()
 title:createButton({w=20,text="111111"}):addToSubview():setActionCallback(function() show=false end)
 
 lable=layout:createLayout({ui=ui,w=100,h=80,id='aa'}):addToRootView()
-lable:createLable({
+a=lable:createLable({
 	list={{value='1'},{value='2'},{value='3'},{value='4'},{value='5'}},
 	titleStyle={
 	
@@ -17,8 +17,10 @@ lable:createLable({
 	tabStyle={
 	
 	},
-}):addToSubview():setActionCallback(function(...)Print(...) end)
-
+}):addToSubview():setActionCallback(function(page)
+	Print(page.layoutView)
+ end)
+Print(a:getPage(1).layoutView)
 
 
 

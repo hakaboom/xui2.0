@@ -73,6 +73,7 @@ function _layout:createLayout(Base)
 				backgroundColor = Base.Color or 'rgb(255,255,255)',
 				['flex-direction'] = Base.sort or 'column'
 			},
+			subviews = {},
 		},
 	}
 	
@@ -113,13 +114,44 @@ function _layout:addToSubview()
 	self.viewSwitch = true
 	return self
 end
-function _layout:setStyle(styles)	--styles need table
-	if not layoutView then
-		local layoutStyle = self.con.style
-		utils.mergeTable(layoutStyle,styles)
-	else
-		local view = self.layoutView
-		view:setStyle(styles)
+function _layout:setStyle(...)
+	local tbl = {...}
+	if (#tbl == 1) then
+		local styles = tbl[1]
+		if (type(tbl[1]) == 'table') then
+			if not self.layoutView then
+				utils.mergeTable(self.con.style,styles)
+			else
+				self.layoutView:setStyle(styles)
+			end
+		end
+	elseif (#tbl == 2) then
+		local key,value = tbl[1],tbl[2]
+		if not self.layoutView then
+			self.con.style[key] = value
+		else
+			self.layoutView:setStyle(key,value)
+		end
+	end
+end
+function _layout:setAttr(...)
+	local tbl = {...}
+	if (#tbl == 1) then
+		local Attrs = tbl[1]
+		if (type(tbl[1]) == 'table') then
+			if not self.layoutView then
+				utils.mergeTable(self.con,Attrs)
+			else
+				self.layoutView:setAttr(Attrs)
+			end
+		end
+	elseif (#tbl == 2) then
+		local key,value = tbl[1],tbl[2]
+		if not self.layoutView then
+			self.con[key] = value
+		else
+			self.layoutView:setAttr(key,value)
+		end
 	end
 end
 function _layout:getView()
@@ -397,7 +429,9 @@ end
 function _lable:buildTab(list,style)
 	local o={
 		view = 'div',
-		style = {},
+		style = {
+			['flex-direction'] = 'row',
+		},
 		subviews = {},
 	}
 	
@@ -407,20 +441,17 @@ function _lable:buildTab(list,style)
 	local height = style.height
 	local backgroundColor = style.backgroundColor or '#ffffff'
 	
-	o.style.width = width
+	o.style.width = width*#list
 	o.style.height = height
-	local t={
-		'red','blue','black','yellow','purple'
-	}
+
 	for i=1, #list do
 		local	tabView = _layout:createLayout({ui=self,id=list[i].value})
 			tabView:setStyle({
 				width=width,
 				height=height,
-				backgroundColor = t[i],
-				left = ( i - 1 )*( -1 * width),
+				backgroundColor = backgroundColor，
 			})
-
+			self.config.pages[i] = tabView
 			o.subviews[i] = tabView:getView()
 	end
 	
@@ -443,7 +474,7 @@ function _lable:createLayout(Base)
 		parentView = self.layoutView,
 		width = width,
 		height = height,
-		config = {},
+		config = {pages={}},
 		con = {
 			id = utils.buildID('lable',(Base.id or xui_lable.Count)),
 			view = 'div',
@@ -509,11 +540,15 @@ function _lable:setActionCallback(callback)
 
 			config.checkedIndex = id
 			
+			local tabView = view:getSubview(2)
+			tabView:setStyle('left',(config[id].index-1)*(-1 *self.tabWidth))
 
 		end
 		
 		if callback then
-			callback()
+			local index = config[id].index
+			local page = self:getPage(index)
+			callback(page)
 		end
 	end
 	
@@ -532,6 +567,14 @@ function _lable:createView()
 	local view = context:createView(self.con)
 
 	self.layoutView = view
+
+	local tabView = view:getSubview(2)
+	local tabCount = tabView:subviewsCount()
+	for i = 1, tabCount do
+		self.config.pages[i].layoutView = tabView:getSubview(i)
+		self.config.pages[i].viewSwitch = true
+	end
+
 	return self
 end
 function _lable:addToSubview()
@@ -545,6 +588,13 @@ function _lable:addToSubview()
 	parentView:addSubview(self.layoutView)
 	self.viewSwitch = true
 	return self
+end
+function _lable:getPage(index)
+	if index then
+		return self.config.pages[index]
+	else
+		return self.config.pages
+	end
 end
 function _layout:createLable(Base)
 	return _lable.createLayout(self,Base)
