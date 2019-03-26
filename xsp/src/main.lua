@@ -8,23 +8,28 @@ ui:creatContext()
 
 lable=layout:createLayout({ui=ui,w=100,h=90}):addToRootView()
 
-page1=lable:createLayout({w=100,h=100}):addToSubview()
+
+page1=lable:createLayout({w=100,h=70}):addToSubview()
+page2=lable:createLayout({w=100,h=70}):addToSubview()
 a=page1:createLable({
 	list={
 		{value='1'},{value='2'},
 		{value='3'},{value='4'},
 		{value='5'},{value='6'},
-		{value='7'},{value='8'},
 	},
 	titleStyle = {
+		w=20,h=20
 	},
-	sort = 'row',
-}):addToSubview():setActionCallback(function(page) end)
+	tabStyle = {
+		backgroundColor = 'black'
+	},
+}):addToSubview():setActionCallback(function(...) print(b:getSubview()) end)
+
+
 
 title=layout:createLayout({ui=ui,w=100,h=10,sort='row'}):addToRootView()
-title:createButton({w=50,text="111111",Color='blue'}):addToSubview():setActionCallback(function() show=false end)
-title:createButton({w=50,text="222222"}):addToSubview()
-:setActionCallback(function(Base) show=true end)
+b=title:createButton({w=20,text="close"}):addToSubview():setActionCallback(function() end)
+title:createButton({w=20,text="start"}):addToSubview():setActionCallback(function()  ui:close() end)
 
 
 

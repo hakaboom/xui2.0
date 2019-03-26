@@ -3,6 +3,120 @@ local calSacle=function (x)return 750 / _width * x end
 
 local utils = require'xui.utils'
 
+local class={}
+function class:new()
+	local o={
+	}
+	setmetatable(o,{__index = self})
+	return o
+end
+function class:setStyle(...)
+	local tbl = {...}
+	if (#tbl == 1) then
+		local styles = tbl[1]
+		if (type(tbl[1]) == 'table') then
+			if not rawget(self,'layoutView') then
+				utils.mergeTable(self.con.style,styles)
+			else
+				self.layoutView:setStyle(styles)
+			end
+		end
+	elseif (#tbl == 2) then
+		local key,value = tbl[1],tbl[2]
+		if not rawget(self,'layoutView') then
+			self.con.style[key] = value
+		else
+			self.layoutView:setStyle(key,value)
+		end
+	end
+	return self
+end
+function class:setAttr(...)
+	local tbl = {...}
+	if (#tbl == 1) then
+		local Attrs = tbl[1]
+		if (type(tbl[1]) == 'table') then
+			if not rawget(self,'layoutView') then
+				utils.mergeTable(self.con,Attrs)
+			else
+				self.layoutView:setAttr(Attrs)
+			end
+		end
+	elseif (#tbl == 2) then
+		local key,value = tbl[1],tbl[2]
+		if not rawget(self,'layoutView') then
+			self.con[key] = value
+		else
+			self.layoutView:setAttr(key,value)
+		end
+	end
+	return self
+end
+function class:getID()
+	return self.con.id
+end
+function class:getStyle()
+	if self.layoutView then
+		return self.layoutView:getStyles()
+	else
+		return self.con.style
+	end
+end
+function class:getView()
+	if self.layoutView then
+		return self.layoutView
+	else
+		return self.con
+	end
+end
+function class:getSubview(index)
+	if self.layoutView then
+		return self.layoutView:getSubview(index)
+	else
+		return self.con.subviews(index)
+	end
+end
+function class:createView()
+	local context = self.context
+	local view = context:createView(self.con)
+
+	self.layoutView = view
+	return self
+end
+function class:addToRootView()
+	if self.viewSwitch then return end
+	local context = self.context
+	local rootView = context:getRootView()
+
+	if not rawget(self,'layoutView') then
+		self:createView()
+	end
+	
+	rootView:addSubview(self.layoutView)
+	self.viewSwitch = true
+	return self
+end
+function class:addToSubview() 
+	if self.viewSwitch then return end --防止重复添加
+	local context = self.context
+	local parentView = self.parentView
+
+	if not rawget(self,'layoutView') then
+		self:createView()
+	end
+
+	parentView:addSubview(self.layoutView)
+	self.viewSwitch = true
+	return self
+end
+function class:removeFromParent()
+	self.layoutView:removeFromParent()
+end
+function class:getType()
+	return self.__tag
+end
+------------------------------------------------------------------
+
 local _rootView={}
 function _rootView:createLayout(Base)
 	local rect = Base.Area or Rect(0,0,_width,_height)
@@ -34,13 +148,14 @@ function _rootView:creatContext()
 	return context
 end
 function _rootView:show()
-	local context = self.context
-	context:show()
+	self.context:show()
+end
+function _rootView:close()
+	self.context:close()
 end
 
-
 ------------------------------------------------------------------
-local _layout={}
+local _layout=class:new()
 local xui_layout={
 	Count = 0,	
 }
@@ -78,98 +193,23 @@ function _layout:createLayout(Base)
 	}
 	
 	utils.mergeTable(o.con.style,Base.style)
-	setmetatable(o,{__index = self})
+	setmetatable(o,{__index = _layout})
 	return o
 end
-function _layout:createView()
-	local context = self.context
-	local view = context:createView(self.con)
-
-	self.layoutView = view
+function _layout:setActionCallback(callback)
+	local view = self.layoutView
+	local onClicked=function (id,action)
+		local Base={id=id,action=action,view=view}
+		if callback then
+			callback(Base)
+		end
+	end
+	view:setActionCallback(UI.ACTION.CLICK, onClicked)
 	return self
-end
-function _layout:addToRootView()
-	if self.viewSwitch then return end	--防止重复添加
-	local context = self.context
-	local rootView = context:getRootView()
-
-	if not rawget(self,'layoutView') then
-		self:createView()
-	end
-	
-	rootView:addSubview(self.layoutView)
-	self.viewSwitch = true
-	return self
-end
-function _layout:addToSubview() 
-	if self.viewSwitch then return end --防止重复添加
-	local context = self.context
-	local parentView = self.parentView
-
-	if not rawget(self,'layoutView') then
-		self:createView()
-	end
-
-	parentView:addSubview(self.layoutView)
-	self.viewSwitch = true
-	return self
-end
-function _layout:setStyle(...)
-	local tbl = {...}
-	if (#tbl == 1) then
-		local styles = tbl[1]
-		if (type(tbl[1]) == 'table') then
-			if not rawget(self,'layoutView') then
-				utils.mergeTable(self.con.style,styles)
-			else
-				self.layoutView:setStyle(styles)
-			end
-		end
-	elseif (#tbl == 2) then
-		local key,value = tbl[1],tbl[2]
-		if not rawget(self,'layoutView') then
-			self.con.style[key] = value
-		else
-			self.layoutView:setStyle(key,value)
-		end
-	end
-end
-function _layout:setAttr(...)
-	local tbl = {...}
-	if (#tbl == 1) then
-		local Attrs = tbl[1]
-		if (type(tbl[1]) == 'table') then
-			if not rawget(self,'layoutView') then
-				utils.mergeTable(self.con,Attrs)
-			else
-				self.layoutView:setAttr(Attrs)
-			end
-		end
-	elseif (#tbl == 2) then
-		local key,value = tbl[1],tbl[2]
-		if not rawget(self,'layoutView') then
-			self.con[key] = value
-		else
-			self.layoutView:setAttr(key,value)
-		end
-	end
-end
-function _layout:getStyle()
-	if not rawget(self,'layoutView') then
-		return self.con.style
-	else
-		return self.layoutView:getStyles()
-	end
-end
-function _layout:getView()
-	return self.con
-end
-function _layout:getID()
-	return self.con.id
 end
 
 ------------------------------------------------------------------
-local _button={}
+local _button=class:new()
 local xui_button={
 	Count = 0,
 	layout = function ()
@@ -227,25 +267,6 @@ function _button:createLayout(Base)
 	setmetatable(o,{__index = _button})
 	return o
 end
-function _button:createView()
-	local context = self.context
-	local view = context:createView(self.con)
-
-	self.layoutView = view
-	return self
-end
-function _button:addToSubview()
-	local context = self.context
-	local parentView = self.parentView
-	
-	if not rawget(self,'layoutView') then
-		self:createView()
-	end
-
-	parentView:addSubview(self.layoutView)
-	self.viewSwitch = true
-	return self
-end
 function _button:setActionCallback(callback)
 	local view = self.layoutView
 	local onClicked=function (id,action)
@@ -254,30 +275,16 @@ function _button:setActionCallback(callback)
 			callback(Base)
 		end
 	end
-	view:setActionCallback(UI.ACTION.CLICK, onClicked)
-    view:setActionCallback(UI.ACTION.LONG_PRESS, onClicked)
+		view:setActionCallback(UI.ACTION.CLICK, onClicked)
+		view:setActionCallback(UI.ACTION.LONG_PRESS, onClicked)
+	return self
 end
-function _button:getID()
-	return self.con.id
-end
-function _button:setStyle(...)
-	local tbl = {...}
-	if (#tbl == 1) then
-		local styles = tbl[1]
-		if (type(tbl[1]) == 'table') then
-			if not self.layoutView then
-				utils.mergeTable(self.con.style,styles)
-			else
-				self.layoutView:setStyle(styles)
-			end
-		end
-	elseif (#tbl == 2) then
-		local key,value = tbl[1],tbl[2]
-		if not self.layoutView then
-			self.con.style[key] = value
-		else
-			self.layoutView:setStyle(key,value)
-		end
+function _button:setValue(str)
+	local str = tostring(str) or ''
+	if not self.layoutView then
+		self.con.subviews[1].value = str
+	else
+		self.layoutView:getSubview(1):setAttr('value',str)
 	end
 end
 function _layout:createButton(Base)
@@ -285,7 +292,7 @@ function _layout:createButton(Base)
 end
 
 ------------------------------------------------------------------
-local _gridSelect={} 
+local _gridSelect=class:new() 
 local xui_gridSelect={
 	Count = 0,
 	select_layout = function ()
@@ -345,7 +352,7 @@ function _gridSelect:createLayout(Base)
 	
 end
 ------------------------------------------------------------------
-local _lable={}
+local _lable=class:new()
 local xui_lable={
 	Count=0,
 	select_layout=function ()
@@ -389,7 +396,7 @@ local xui_lable={
 	end,
 	config={},
 } 
-function _lable:buildSelect(list,style)
+function _lable:buildTitle(list,style)
 	local o={
 		view = 'scroller',
 		style = {},
@@ -400,10 +407,10 @@ function _lable:buildSelect(list,style)
 	local style = style or {}
 	local layoutSort = self.con.style['flex-direction']
 	local width  =	layoutSort =='column' and self.width or self.width*(style.w or 12)/100
-	local height =	layoutSort =='column' and self.height*(style.h or 20)/100 or self.height
+	local height =	layoutSort =='column' and self.height*(style.h or 15)/100 or self.height
 	
-	local selectWidth  = layoutSort =='column' and width*0.15 or width
-	local selectHeight = layoutSort =='column' and height or height*0.15
+	local titleWidth  = layoutSort =='column' and width*(style.titleWidth or 15)/100 or width
+	local titleHeight = layoutSort =='column' and height or height*(style.titleHeight or 15)/100 
 	local fontSize = (style.fontSize or style['font-size']) or 15
 	local checkedTextColor = style.checkedTextColor or '#000000'
 	local checkedBackgroundColor = style.checkedBackgroundColor or '#ffffff'
@@ -427,8 +434,8 @@ function _lable:buildSelect(list,style)
 		subviews[i] = layout
 		
 		local layoutStyle = layout.style
-		layoutStyle.width  = selectWidth
-		layoutStyle.height = selectHeight
+		layoutStyle.width  = titleWidth
+		layoutStyle.height = titleHeight
 		layoutStyle.backgroundColor = checkedBackgroundColor
 		
 		local textView = layout.subviews[1]
@@ -539,17 +546,15 @@ function _lable:createLayout(Base)
 	local	list = Base.list or {}
 	local	titleStyle = Base.titleStyle or {}
 	local 	tabStyle = Base.tabStyle or {}
-	local	titleWidth = (titleStyle.w or 20)/100
-	local 	titleHeight = (titleStyle.h or 20)/100
 
-	local selectView = _lable.buildSelect(o,list,titleStyle)
-	local selectWidth = selectView.style.width
-	local selectHeight = selectView.style['max-height']
-	o.con.subviews[1] = selectView
+	local titleView = _lable.buildTitle(o,list,titleStyle)
+	local titleWidth = titleView.style.width
+	local titleHeight = titleView.style['max-height']
+	o.con.subviews[1] = titleView
 	
 	
-	tabStyle.width = tabStyle.width or (layoutSort == 'column' and selectWidth or (width-selectWidth) )
-	tabStyle.height = tabStyle.height or (layoutSort == 'column' and (height-selectHeight) or selectHeight )
+	tabStyle.width = tabStyle.width or (layoutSort == 'column' and titleWidth or (width-titleWidth) )
+	tabStyle.height = tabStyle.height or (layoutSort == 'column' and (height-titleHeight) or titleHeight )
 	local tabView = _lable.buildTab(o,list,tabStyle)
 	o.con.subviews[2] = tabView
 	o.tabWidth = tabStyle.width
@@ -557,6 +562,21 @@ function _lable:createLayout(Base)
 
 	setmetatable(o,{__index = _lable})
 	return o
+end
+function _lable:createView()
+	local context = self.context
+	local view = context:createView(self.con)
+
+	self.layoutView = view
+
+	local tabView = view:getSubview(2)
+	local tabCount = tabView:subviewsCount()
+	for i = 1, tabCount do
+		self.config.pages[i].layoutView = tabView:getSubview(1):getSubview(i)
+		self.config.pages[i].viewSwitch = true
+	end
+
+	return self
 end
 function _lable:setActionCallback(callback)
 	local view = self.layoutView
@@ -602,36 +622,9 @@ function _lable:setActionCallback(callback)
 	for i = 1, subviewsCount do
 		local subview = selectView:getSubview(i)
 		subview:setActionCallback(UI.ACTION.CLICK, onClicked)
-		subview:setActionCallback(UI.ACTION.LONG_PRESS, onClicked)
+	--	subview:setActionCallback(UI.ACTION.LONG_PRESS, onClicked)
 	end
 	
-	return self
-end
-function _lable:createView()
-	local context = self.context
-	local view = context:createView(self.con)
-
-	self.layoutView = view
-
-	local tabView = view:getSubview(2)
-	local tabCount = tabView:subviewsCount()
-	for i = 1, tabCount do
-		self.config.pages[i].layoutView = tabView:getSubview(1):getSubview(i)
-		self.config.pages[i].viewSwitch = true
-	end
-
-	return self
-end
-function _lable:addToSubview()
-	local context = self.context
-	local parentView = self.parentView
-	
-	if not self.layoutView then
-		self:createView()
-	end
-
-	parentView:addSubview(self.layoutView)
-	self.viewSwitch = true
 	return self
 end
 function _lable:getPage(index)
@@ -646,13 +639,9 @@ function _lable:getPage(index)
 		return self.config.pages
 	end
 end
-function _lable:getID()
-	return self.con.id
-end
 function _layout:createLable(Base)
 	return _lable.createLayout(self,Base)
 end
-
 
 ------------------------------------------------------------------
 
