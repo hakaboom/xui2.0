@@ -1,5 +1,5 @@
 local _width,_height=screen.getSize().width,screen.getSize()._height
-local calSacle=function (x)return 750 / _width * x end
+local calSacle = function (x) return 750 / _width * x end
 
 local utils = require'xui.utils'
 
@@ -198,7 +198,7 @@ function _layout:createLayout(Base)
 end
 function _layout:setActionCallback(callback)
 	local view = self.layoutView
-	local onClicked=function (id,action)
+	local onClicked = function (id,action)
 		local Base={id=id,action=action,view=view}
 		if callback then
 			callback(Base)
@@ -228,7 +228,8 @@ local xui_button={
                         ['text-overflow'] = 'ellipsis',
                         ['font-size'] = 15,
                         lines = 1,
-                    }
+                    },
+                    value = '',
                 }
             }
 		}
@@ -269,10 +270,10 @@ function _button:createLayout(Base)
 end
 function _button:setActionCallback(callback)
 	local view = self.layoutView
-	local onClicked=function (id,action)
-		local Base={id=id,action=action,view=view}
+	local onClicked = function (id,action)
+	--	local Base = {id=id,action=action,view=view}
 		if callback then
-			callback(Base)
+			callback(self)
 		end
 	end
 		view:setActionCallback(UI.ACTION.CLICK, onClicked)
@@ -291,6 +292,96 @@ function _layout:createButton(Base)
 	return _button.createLayout(self,Base)
 end
 
+------------------------------------------------------------------
+local _input=class:new()
+local xui_input={
+	Count = 1,
+	layout = function ()
+		return {
+			view = 'input',
+			style = {},
+			value = '',
+		}
+	end
+}
+function _input:createLayout(Base)
+	local Base = Base or {}
+	local xpos = Base.xpos and Base.xpos/100*self.width or 0
+	local ypos = Base.ypos and Base.ypos/100*self.height or 0
+	local width = (Base.w or 100)/100*self.width
+	local height = (Base.h or 100)/100*self.height
+	if not Base.id then
+		xui_input.Count = xui_input.Count + 1
+	end
+
+	local o ={
+		__tag = 'input',
+		context = self.context,
+		parentView = self.layoutView,
+		saveData = {},
+		width = width,
+		height = height,
+		con = {
+		},
+	}
+
+	local id = utils.buildID('input',(Base.id or xui_button.Count))
+	local kbtype = Base.kbtype or 'text'
+	local value = Base.value or ''
+	local placeholder = Base.placeholder or ''
+	local disabled = Base.disabled or false
+	local autofocus = Base.autofocus or false
+	local maxlength = Base.maxlength or 1
+	local singleline = Base.singleline or true
+
+	local style = Base.style or {}
+	local fontSize = (style.fontSize or style['font-size']) or 20
+	local textColor = style.textColor or '#ffffff'
+	local backgroundColor = (style.backgroundColor or style['background-color']) or '#ffffff'
+	local checkedBackgroundColor = style.checkedBackgroundColor or '#000000'
+	local layout = xui_input.layout()
+	
+	local layout = {
+		view = 'input',
+		type = kbtype,
+		value = value,
+		placeholder = placeholder,
+		disabled = disabled,
+		autofocus = autofocus,
+		maxlength = maxlengthm,
+		singleline = singleline,
+		style = {
+			width = width,
+			height = height,
+			fontSize = fontSize,
+			color = textColor,
+			backgroundColor = backgroundColor,
+			['backgroundColor:focus'] = checkedBackgroundColor, 
+		},
+	}
+
+	o.con = layout
+	setmetatable(o,{__index = _input})
+	return o
+end
+function _input:setActionCallback(callback)
+	local view = self.layoutView
+	local onClicked = function (id,action)
+		local value = view:getAttr('value')
+		local Base = {id=id,action=action,view=view,value=value}
+		self.saveData.value = value
+		if callback then
+			callback(value)
+		end
+	end
+	view:setActionCallback(UI.ACTION.INPUT,onClicked)
+end
+function _input:getValue()
+	return self.saveData.value
+end
+function _layout:createInput(Base)
+	return _input.createLayout(self,Base)
+end
 ------------------------------------------------------------------
 local _gridSelect=class:new() 
 local xui_gridSelect={
@@ -348,8 +439,7 @@ function _gridSelect:createLayout(Base)
 	
 	local layout = xui_gridSelect.select_layout()
 	layout.id = utils.buildID('gridSelect',(Base.id or xui_button.Count))
-	
-	
+
 end
 ------------------------------------------------------------------
 local _lable=class:new()
@@ -569,10 +659,10 @@ function _lable:createView()
 
 	self.layoutView = view
 
-	local tabView = view:getSubview(2)
+	local tabView = view:getSubview(2):getSubview(1)
 	local tabCount = tabView:subviewsCount()
 	for i = 1, tabCount do
-		self.config.pages[i].layoutView = tabView:getSubview(1):getSubview(i)
+		self.config.pages[i].layoutView = tabView:getSubview(i)
 		self.config.pages[i].viewSwitch = true
 	end
 
