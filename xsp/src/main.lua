@@ -12,11 +12,12 @@ lable=layout:createLayout({ui=ui,w=100,h=90}):addToRootView()
 
 page1=lable:createLayout({w=100,h=70}):addToSubview()
 page2=lable:createLayout({w=100,h=70}):addToSubview()
-a=page1:createLable({
+a=page1:createTabPage({
 	list={
 		{value='1'},{value='2'},
 		{value='3'},{value='4'},
 		{value='5'},{value='6'},
+		{value='7'},{value='8'},
 	},
 	titleStyle = {
 		w=20,h=20
@@ -29,9 +30,8 @@ a=page1:createLable({
 
 
 title=layout:createLayout({ui=ui,w=100,h=10,sort='row',Color='blue'}):addToRootView()
-b=title:createButton({w=20,text="close"}):addToSubview():setActionCallback(function() end)
-title:createInput({w=20,value="start"}):addToSubview():setActionCallback( function(Base)
-	
+b=title:createButton({w=20,text="close"}):addToSubview():setActionCallback(function()print(1) end)
+title:createInput({w=40,prompt="start"}):addToSubview():setActionCallback( function(Base)
 end)
 
 

@@ -12,11 +12,12 @@ function class:new()
 end
 function class:setStyle(...)
 	local tbl = {...}
+	local ViewStyle = self.con.style
 	if (#tbl == 1) then
 		local styles = tbl[1]
 		if (type(tbl[1]) == 'table') then
 			if not rawget(self,'layoutView') then
-				utils.mergeTable(self.con.style,styles)
+				utils.mergeTable(ViewStyle,styles)
 			else
 				self.layoutView:setStyle(styles)
 			end
@@ -24,7 +25,7 @@ function class:setStyle(...)
 	elseif (#tbl == 2) then
 		local key,value = tbl[1],tbl[2]
 		if not rawget(self,'layoutView') then
-			self.con.style[key] = value
+			ViewStyle[key] = value
 		else
 			self.layoutView:setStyle(key,value)
 		end
@@ -51,6 +52,9 @@ function class:setAttr(...)
 		end
 	end
 	return self
+end
+function class:setOverlay()
+
 end
 function class:getID()
 	return self.con.id
@@ -216,10 +220,8 @@ local xui_button={
 		return {
 			view = 'div',
 			style = {
-				['backgroundColor:active'] ='#efeff0',
                 ['align-items'] = 'center',
                 ['justify-content'] = 'center',
-                ['border-radius'] = 15,
             },
 			subviews = {
                 {
@@ -254,14 +256,30 @@ function _button:createLayout(Base)
 		con = {
 		},
 	}
+	local style = Base.style or {}
+	local fontSize = (style.fontSize or style['font-size']) or 18
+	local textColor = style.textColor or '#000000'	
+	local backgroundColor = (style.backgroundColor or style['background-color']) or '#ffffff'
+	local checkedBackgroundColor = style.checkedBackgroundColor or '#efeff0'
+	local borderRadius = (style.borderRadius or  style['border-radius']) or 15
 	
 	local layout = xui_button.layout()
 	layout.id = utils.buildID('button',(Base.id or xui_button.Count))
 	utils.mergeTable(layout.style,{
-		width = width,height = height,left = xpos,top = ypos,
-		backgroundColor  = (Base.Color or 'white'),
+		width = width,
+		height = height,
+		left = xpos,
+		top = ypos,
+		borderRadius = borderRadius,
+		backgroundColor  = backgroundColor,
+		['backgroundColor:active'] = checkedBackgroundColor,
 	})
-		
+	
+	utils.mergeTable(layout.subviews[1].style,{
+		fontSize = fontSize,
+		color = textColor,
+	})
+	
 	layout.subviews[1].value = Base.text
 
 	o.con = layout
@@ -271,7 +289,6 @@ end
 function _button:setActionCallback(callback)
 	local view = self.layoutView
 	local onClicked = function (id,action)
-	--	local Base = {id=id,action=action,view=view}
 		if callback then
 			callback(self)
 		end
@@ -322,12 +339,22 @@ function _input:createLayout(Base)
 		width = width,
 		height = height,
 		con = {
+			view = 'div',
+			style = {
+				width = width,
+				height = height,
+				['flex-direction'] = 'row',
+				backgroundColor = '#e5e5e5',
+				['border-radius'] = 5,
+				['align-items'] = 'center',
+			},
+			subviews = {},
 		},
 	}
 
 	local id = utils.buildID('input',(Base.id or xui_button.Count))
 	local kbtype = Base.kbtype or 'text'
-	local value = Base.value or ''
+	local prompt = Base.prompt or ''
 	local placeholder = Base.placeholder or ''
 	local disabled = Base.disabled or false
 	local autofocus = Base.autofocus or false
@@ -336,15 +363,15 @@ function _input:createLayout(Base)
 
 	local style = Base.style or {}
 	local fontSize = (style.fontSize or style['font-size']) or 20
-	local textColor = style.textColor or '#ffffff'
-	local backgroundColor = (style.backgroundColor or style['background-color']) or '#ffffff'
+	local textColor = style.textColor or '#ababab'
+	local backgroundColor = (style.backgroundColor or style['background-color']) or '#000000'
 	local checkedBackgroundColor = style.checkedBackgroundColor or '#000000'
 	local layout = xui_input.layout()
 	
-	local layout = {
+	local inputLayout = {
 		view = 'input',
 		type = kbtype,
-		value = value,
+		value = prompt,
 		placeholder = placeholder,
 		disabled = disabled,
 		autofocus = autofocus,
@@ -355,26 +382,52 @@ function _input:createLayout(Base)
 			height = height,
 			fontSize = fontSize,
 			color = textColor,
-			backgroundColor = backgroundColor,
-			['backgroundColor:focus'] = checkedBackgroundColor, 
+			['padding-left'] = 6,	
 		},
 	}
-
-	o.con = layout
+	o.con.subviews[1] = inputLayout
+	
+	local cancel = self.createButton(o,{w=20,text='取消',style={
+		backgroundColor = '#eeeeee',
+		fontSize = 15,
+		borderRadius = 0,
+		checkedBackgroundColor = 'red'
+	}})
+	cancel:setStyle({
+		left = width*0.8,
+		visibility = 'hidden',
+		position = 'absolute',
+	})
+	o.con.subviews[2] = cancel:getView()
+	
 	setmetatable(o,{__index = _input})
 	return o
 end
 function _input:setActionCallback(callback)
 	local view = self.layoutView
+	local inputView = view:getSubview(1)
+	local cancel = view:getSubview(2)
+	
 	local onClicked = function (id,action)
+		cancel:setStyle('visibility','visible')
+		inputView:setAttr('disabled',false)
+	end
+	local onCancel = function (id,action)
+		cancel:setStyle('visibility','hidden')
+		inputView:setAttr('disabled',true)
+	end
+	local onINPUT = function (id,action)
 		local value = view:getAttr('value')
 		local Base = {id=id,action=action,view=view,value=value}
 		self.saveData.value = value
 		if callback then
-			callback(value)
+			callback(Base)
 		end
 	end
-	view:setActionCallback(UI.ACTION.INPUT,onClicked)
+	
+	cancel:setActionCallback(UI.ACTION.CLICK,onCancel)
+	inputView:setActionCallback(UI.ACTION.CLICK,onClicked)
+	view:setActionCallback(UI.ACTION.INPUT,onINPUT)
 end
 function _input:getValue()
 	return self.saveData.value
@@ -442,8 +495,8 @@ function _gridSelect:createLayout(Base)
 
 end
 ------------------------------------------------------------------
-local _lable=class:new()
-local xui_lable={
+local _tabPage=class:new()
+local xui_tabPage={
 	Count=0,
 	select_layout=function ()
 		return {
@@ -486,7 +539,7 @@ local xui_lable={
 	end,
 	config={},
 } 
-function _lable:buildTitle(list,style)
+function _tabPage:buildTitle(list,style)
 	local o={
 		view = 'scroller',
 		style = {},
@@ -519,7 +572,7 @@ function _lable:buildTitle(list,style)
 	local subviews = o.subviews
 	for i=1, #list do
 		local value = list[i].value or ''
-		local layout = xui_lable.select_layout()
+		local layout = xui_tabPage.select_layout()
 		layout.id = utils.buildID(self.con.id..'_title',value)
 		subviews[i] = layout
 		
@@ -555,7 +608,7 @@ function _lable:buildTitle(list,style)
 	end
 	return o
 end
-function _lable:buildTab(list,style)
+function _tabPage:buildTab(list,style)
 	local o={
 		view = 'div',
 		style = {},
@@ -599,7 +652,7 @@ function _lable:buildTab(list,style)
 	
 	return o
 end
-function _lable:createLayout(Base)
+function _tabPage:createLayout(Base)
 	local	Base = Base or {}
 	local	xpos = Base.xpos and Base.xpos/100*self.width or 0
 	local	ypos = Base.ypos and Base.ypos/100*self.height or 0
@@ -607,18 +660,18 @@ function _lable:createLayout(Base)
 	local	width = math.floor((Base.w or 100) /100*(self.width or ui.width))
 	local	height = math.floor((Base.h or 100) /100*(self.height or ui.height))
 	if not Base.id then
-		xui_lable.Count = xui_lable.Count + 1
+		xui_tabPage.Count = xui_tabPage.Count + 1
 	end
 	
 	local o={
-		__tag = 'lable',
+		__tag = 'tabPage',
 		context = self.context,
 		parentView = self.layoutView,
 		width = width,
 		height = height,
 		config = {pages={}},
 		con = {
-			id = utils.buildID('lable',(Base.id or xui_lable.Count)),
+			id = utils.buildID('tabPage',(Base.id or xui_tabPage.Count)),
 			view = 'div',
 			style = {
 				width = width,
@@ -637,7 +690,7 @@ function _lable:createLayout(Base)
 	local	titleStyle = Base.titleStyle or {}
 	local 	tabStyle = Base.tabStyle or {}
 
-	local titleView = _lable.buildTitle(o,list,titleStyle)
+	local titleView = _tabPage.buildTitle(o,list,titleStyle)
 	local titleWidth = titleView.style.width
 	local titleHeight = titleView.style['max-height']
 	o.con.subviews[1] = titleView
@@ -645,15 +698,15 @@ function _lable:createLayout(Base)
 	
 	tabStyle.width = tabStyle.width or (layoutSort == 'column' and titleWidth or (width-titleWidth) )
 	tabStyle.height = tabStyle.height or (layoutSort == 'column' and (height-titleHeight) or titleHeight )
-	local tabView = _lable.buildTab(o,list,tabStyle)
+	local tabView = _tabPage.buildTab(o,list,tabStyle)
 	o.con.subviews[2] = tabView
 	o.tabWidth = tabStyle.width
 	o.tabHeight = tabStyle.height
 
-	setmetatable(o,{__index = _lable})
+	setmetatable(o,{__index = _tabPage})
 	return o
 end
-function _lable:createView()
+function _tabPage:createView()
 	local context = self.context
 	local view = context:createView(self.con)
 
@@ -668,7 +721,7 @@ function _lable:createView()
 
 	return self
 end
-function _lable:setActionCallback(callback)
+function _tabPage:setActionCallback(callback)
 	local view = self.layoutView
 	local config = self.config
 
@@ -695,7 +748,6 @@ function _lable:setActionCallback(callback)
 
 			config.checkedIndex = id
 			
-			
 			local tabView = view:getSubview(2):getSubview(1)
 			tabView:setStyle('left',(config[id].index-1)*(-1 *self.tabWidth))
 		end
@@ -712,12 +764,10 @@ function _lable:setActionCallback(callback)
 	for i = 1, subviewsCount do
 		local subview = selectView:getSubview(i)
 		subview:setActionCallback(UI.ACTION.CLICK, onClicked)
-	--	subview:setActionCallback(UI.ACTION.LONG_PRESS, onClicked)
 	end
-	
 	return self
 end
-function _lable:getPage(index)
+function _tabPage:getPage(index)
 	local _type = type(index)
 	if (_type == 'number') then
 		return self.config.pages[index]
@@ -729,8 +779,8 @@ function _lable:getPage(index)
 		return self.config.pages
 	end
 end
-function _layout:createLable(Base)
-	return _lable.createLayout(self,Base)
+function _layout:createTabPage(Base)
+	return _tabPage.createLayout(self,Base)
 end
 
 ------------------------------------------------------------------
