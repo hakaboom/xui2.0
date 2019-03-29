@@ -35,10 +35,9 @@ a=page1:createTabPage({
 
 title=layout:createLayout({ui=ui,w=100,h=10,sort='row',Color='blue'}):addToRootView()
 b=title:createStepper({w=20,number=11,maximum=13,step=2}):addToSubview():setActionCallback(function()print(1) end)
-title:createInput({w=40,prompt="start"}):addToSubview():setActionCallback( function(Base)
-end)
-
-
+c=title:createInput({w=40,prompt="start"}):addToSubview():setActionCallback()
+d=title:createButton({w=40}):addToSubview():setActionCallback(function() ui:getSaveData():save() end)
+e=title:createOverlay():addToRootView():setActionCallback()
 
 
 

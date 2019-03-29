@@ -53,9 +53,6 @@ function class:setAttr(...)
 	end
 	return self
 end
-function class:setOverlay()
-
-end
 function class:getID()
 	return self.con.id
 end
@@ -128,31 +125,36 @@ function _storage:new(fileName)
 	}
 	
 	local cjson = require'cjson'
-	local file = io.open(o.path,'a+')
-	
-	local str = file:read('a')
+	local file = io.open(o.path,'a')	
+	local file = io.open(o.path,'r')
+
+	local str = file:read('*a')
 	file:close()
 	if #str~=0 then
-		o.data = cjson.encode(str)
+		printf('read config by %s',o.path)
+		o.data = cjson.decode(str)
 	end
 	
 	setmetatable(o,{__index = _storage})
 	return o
 end
-function _storage:put(key,value)
-	self.data[key] = value
+function _storage:put(id,value)
+	self.data[id] = value
 end
-function _storage:get(key,defValue)
-	return (self.data[key] or defsValue)
+function _storage:get(id,defValue)
+	return (self.data[id] or defValue)
 end
 function _storage:save()
 	local cjson = require'cjson'
 	local t = self.data
-	local str = cjson.decode(t)
-	io.open(o.path,'r+'):write(ste):flush():close()
+	local str = cjson.encode(t)
+
+	local file = io.open(self.path,'w+')
+	file:write(str)
+	file:flush()
+	file:close()
 end
 ------------------------------------------------------------------
-
 local _rootView={}
 function _rootView:createLayout(Base)
 	local rect = Base.Area or Rect(0,0,_width,_height)
@@ -162,6 +164,7 @@ function _rootView:createLayout(Base)
 		__tag = 'root_UI',
 		width = width,
 		height = height,
+		saveData = _storage:new(Base.config),
 		rootLayout = {
 			view = Base.view or 'scroller',
 			style ={	
@@ -189,7 +192,56 @@ end
 function _rootView:close()
 	self.context:close()
 end
+function _rootView:getSaveData()
+	return self.saveData
+end
+------------------------------------------------------------------
+local  _overlay=class:new()
+local xui_overlay={
+	Count = 0,
+}
+function _overlay:createLayout(Base)
+	local Base = Base or {}
+	local style = Base.style or {}
+	local backgroundColor = style.backgroundColor or 'rgba(255,255,255,0.3)'
 
+	local o = {
+		__tag = 'overlay',
+		context = self.context,
+		con = {
+			view = 'div',
+			style = {
+				position = 'absolute',
+				backgroundColor = backgroundColor,
+				visibility = 'visible',
+			},
+		},
+	}
+
+	local rootView = o.context:getRootView()
+	local rootStyle = rootView:getStyles()
+	local width,height = rootStyle.width,rootStyle.height
+
+	o.con.style.width = width
+	o.con.style.height = height
+
+	setmetatable(o,{__index = _overlay})
+	return o
+end
+function _overlay:setActionCallback(callback)
+	local view = self.layoutView
+	local onClicked = function (id,action)
+		view:setStyle('visibility','hidden')
+	end
+	view:setActionCallback(UI.ACTION.CLICK,onClicked)
+	return self
+end
+function _overlay:show()
+	self:setStyle('visibility','visible')
+end
+function _overlay:hidden()
+	self:setStyle('visibility','hidden')
+end
 ------------------------------------------------------------------
 local _layout=class:new()
 local xui_layout={
@@ -208,6 +260,7 @@ function _layout:createLayout(Base)
 	local o = {
 		__tag = 'layout',
 		context = self.context or Base.ui.context,
+		saveData = self.saveData or Base.ui.saveData,
 		parentView = self.layoutView,
 		viewSwitch = false,
 		width = width,
@@ -245,7 +298,6 @@ function _layout:setActionCallback(callback)
 	view:setActionCallback(UI.ACTION.SWIPE, onClicked)
 	return self
 end
-
 ------------------------------------------------------------------
 local _button=class:new()
 local xui_button={
@@ -262,7 +314,7 @@ local xui_button={
                     view = 'text',
                     style = {
                         ['text-overflow'] = 'ellipsis',
-                        ['font-size'] = 15,
+                        ['font-size'] = 6,
                         lines = 1,
                     },
                     value = '',
@@ -295,7 +347,7 @@ function _button:createLayout(Base)
 	local textColor = style.textColor or '#333333'	
 	local backgroundColor = (style.backgroundColor or style['background-color']) or '#ffffff'
 	local checkedBackgroundColor = style.checkedBackgroundColor or '#efeff0'
-	local borderRadius = (style.borderRadius or  style['border-radius']) or 15
+	local borderRadius = (style.borderRadius or  style['border-radius']) or 6
 	
 	local layout = xui_button.layout()
 	layout.id = utils.buildID('button',(Base.id or xui_button.Count))
@@ -314,7 +366,7 @@ function _button:createLayout(Base)
 		color = textColor,
 	})
 	
-	layout.subviews[1].value = Base.text
+	layout.subviews[1].value = Base.value
 
 	o.con = layout
 	
@@ -340,14 +392,38 @@ function _button:setValue(str)
 		self.layoutView:getSubview(1):setAttr('value',str)
 	end
 end
-function _layout:createButton(Base)
-	return _button.createLayout(self,Base)
-end
+------------------------------------------------------------------
+local _popup=class:new()
+local xui_popup = {
+}
+function _popup:createLayout(Base)
+	local Base = Base or {}
+	local xpos = Base.xpos and Base.xpos/100*self.width or 0
+	local ypos = Base.ypos and Base.ypos/100*self.height or 0
+	local width = (Base.w or 100)/100*self.width
+	local height = (Base.h or 100)/100*self.height	
+	if not Base.id then
+		xui_popup.Count = xui_popup.Count + 1
+	end
+	local id = utils.buildID('_popup',{Base.id or xui_popup.Count})
 
+	local style = Base.style or {}
+	local backgroundColor = (style.backgroundColor or style['background-color']) or '#ffffff'
+
+	local o = {
+		__tag = 'popup',
+		context = self.context,
+		saveData = self.saveData,
+		width = width,
+		height = height,
+		con = {
+		},
+	}
+end
 ------------------------------------------------------------------
 local _input=class:new()
 local xui_input={
-	Count = 1,
+	Count = 0,
 	layout = function ()
 		return {
 			view = 'input',
@@ -365,11 +441,13 @@ function _input:createLayout(Base)
 	if not Base.id then
 		xui_input.Count = xui_input.Count + 1
 	end
-	
-	local o ={
+	local id = utils.buildID('input',(Base.id or xui_button.Count))
+
+	local o = {
 		__tag = 'input',
 		context = self.context,
 		parentView = self.layoutView,
+		saveData = self.saveData,
 		width = width,
 		height = height,
 		con = {
@@ -384,10 +462,9 @@ function _input:createLayout(Base)
 			subviews = {},
 		},
 	}
-	
-	local id = utils.buildID('input',(Base.id or xui_button.Count))
+
 	local kbtype = Base.kbtype or 'text'
-	local prompt = Base.prompt or ''
+	local prompt = o.saveData:get(id,Base.prompt)
 	local placeholder = Base.placeholder or ''
 	local disabled = Base.disabled or false
 	local autofocus = Base.autofocus or false
@@ -395,7 +472,7 @@ function _input:createLayout(Base)
 	local singleline = Base.singleline or true
 
 	local style = Base.style or {}
-	local fontSize = (style.fontSize or style['font-size']) or 20
+	local fontSize = (style.fontSize or style['font-size']) or 18
 	local textColor = style.textColor or '#666666'
 	local backgroundColor = (style.backgroundColor or style['background-color']) or '#e5e5e5'
 	local checkedBackgroundColor = style.checkedBackgroundColor or '#000000'
@@ -405,9 +482,10 @@ function _input:createLayout(Base)
 	local cancelFontSize = cancelStyle.fontSize or 15
 	local cancelBackgroundColor = cancelStyle.backgroundColor or '#eeeeee'
 	local cancelCheckedBackgroundColor = cancelStyle.cancelCheckedBackgroundColor or cancelBackgroundColor
-	
+
 	o.con.style.backgroundColor = backgroundColor
 	local inputLayout = {
+		id = id,
 		view = 'input',
 		type = kbtype,
 		value = prompt,
@@ -426,17 +504,19 @@ function _input:createLayout(Base)
 	}
 	o.con.subviews[1] = inputLayout
 	
-	local cancel = self.createButton(o,{w=20,text='取消',style={
+	local cancel = self.createButton(o,{w=20,value='取消',style={
 		backgroundColor = cancelBackgroundColor,
 		fontSize = cancelFontSize,
 		borderRadius = 0,
-		checkedBackgroundColor = cancelCheckedBackgroundColor,
+		checkedBackgroundColor = cancelCheckedBackgroundColor
 	}})
+
 	cancel:setStyle({
 		left = width*0.8,
 		visibility = 'hidden',
 		position = 'absolute',
 	})
+
 	o.con.subviews[2] = cancel:getView()
 	
 	setmetatable(o,{__index = _input})
@@ -446,7 +526,8 @@ function _input:setActionCallback(callback)
 	local view = self.layoutView
 	local inputView = view:getSubview(1)
 	local cancel = view:getSubview(2)
-	
+	local saveData = self.saveData
+
 	local onClicked = function (id,action)
 		cancel:setStyle('visibility','visible')
 		inputView:setAttr('disabled',false)
@@ -456,9 +537,9 @@ function _input:setActionCallback(callback)
 		inputView:setAttr('disabled',true)
 	end
 	local onINPUT = function (id,action)
-		local value = view:getAttr('value')
+		local value = inputView:getAttr('value')
 		local Base = {id=id,action=action,view=view,value=value}
-		
+		saveData:put(id,value)
 		if callback then
 			callback(Base)
 		end
@@ -467,71 +548,10 @@ function _input:setActionCallback(callback)
 	cancel:setActionCallback(UI.ACTION.CLICK,onCancel)
 	inputView:setActionCallback(UI.ACTION.CLICK,onClicked)
 	inputView:setActionCallback(UI.ACTION.INPUT,onINPUT)
+	return self
 end
 function _input:getValue()
 	return self.saveData.value
-end
-function _layout:createInput(Base)
-	return _input.createLayout(self,Base)
-end
-------------------------------------------------------------------
-local _gridSelect=class:new() 
-local xui_gridSelect={
-	Count = 0,
-	select_layout = function ()
-		return {
-			view = 'div',
-            style = {
-                ['flex-direction'] = 'row',
-                ['justify-content'] = 'space-between',
-                ['flex-wrap'] = 'wrap'
-            },
-            subviews = {
-
-            }		
-		}
-	end,
-	option_layout = function ()
-		return {
-			view = 'div',
-			style = {},
-			subviews = {
-				{
-					view = 'text',
-					style = {},
-					value = ''
-				},
-			},
-		}
-	end,
-}
-function _gridSelect:createLayout(Base)
-	local	list = Base.list or {}
-	local	style = Base.style or {}
-	local	limit = Base.limit or 999 -- 可选数量
-	local	textColor = style.textColor or '#333333'
-	local	backgroundColor = (style.backgroundColor or style['background-color']) or '#f6f6f6'
-	local	fontSize = (style.fontSize or style['font-size']) or 20
-	local 	borderColor = style.borderColor or 'rgba(0,0,0,0)'
-	local	checkedTextColor = style.checkedTextColor or textColor
-	local	checkedBackgroundColor = style.checkedBackgroundColor or '#c0c0c0'
-	local 	checkedBorderColor	= style.checkedBorderColor or 'rgba(0,0,0,0)'
-	local	disableBorderColor = style.disableBorderColor or 'rgba(0,0,0,0)'
-	local	disableBackgroundColor = style.disableBackgroundColor or '#f6f6f6'
-	local 	disabledTextColor = style.disabledTextColor or '#9b9b9b'
-	
-	Base.w = not Base.w and 100/#list or Base.w
-	Base.lineSpacing = Base.lineSpacing and Base.lineSpacing/100*self.width or 5
-	local	lines = math.floor(100/Base.w)
-	local 	layoutWidth  = Base.w/100*self.width
-	local	layoutHeight = Base.h/100*self.height
-	local	lineSpacing  = (100-(Base.w*lines))/(lines-1)/100*self.width
-	local	columnSpacing = Base.lineSpacing or 12
-	local	column = math.ceil(#list/lines)
-	
-	local layout = xui_gridSelect.select_layout()
-	layout.id = utils.buildID('gridSelect',(Base.id or xui_button.Count))
-
 end
 ------------------------------------------------------------------
 local _stepper=class:new()
@@ -543,6 +563,7 @@ local xui_stepper={
 				view = 'div',
 				style = {
 					flex = 1,
+					['padding-left'] = 2,
 					['align-items'] = 'center',
 				},
 				subviews = {
@@ -568,6 +589,7 @@ local xui_stepper={
 				view = 'div',
 				style = {
 					flex = 1,
+					['padding-right'] = 2,
 					['align-items'] = 'center',
 				},
 				subviews = {
@@ -600,11 +622,17 @@ function _stepper:createLayout(Base)
 	local buttonStyle = style.buttonStyle or {}
 	local buttonBackgroundColor = buttonStyle.backgroundColor or '#e5e5e5'
 	local buttonFontSize = (buttonStyle.fontSize or buttonStyle['font-size']) or 20
-		
+	
+	if not Base.id then
+		xui_stepper.Count = xui_stepper.Count + 1
+	end
+	local id = utils.buildID('stepper',(Base.id or xui_stepper.Count))
+
 	local o = {
 		__tag = 'stepper',
 		context = self.context,
 		parentView = self.layoutView,
+		saveData = self.saveData,
 		config = {maximum= maximum,minimum = minimum,step = step},
 		width = width,
 		height = height,
@@ -621,7 +649,7 @@ function _stepper:createLayout(Base)
 			subviews = {},
 		},
 	}
-	
+
 	local layout = xui_stepper.layout()
 	o.con.subviews = layout
 	
@@ -629,7 +657,8 @@ function _stepper:createLayout(Base)
 	local inputStyle = inputView.style
 	inputStyle.fontSize = fontSize
 	inputStyle.maxlength = maxlength
-	inputView.value = value
+	inputView.id = id
+	inputView.value = o.saveData:get(id,value) 
 	
 	for k,v in ipairs({1,3}) do
 		local view = layout[v]
@@ -640,6 +669,7 @@ function _stepper:createLayout(Base)
 		local textStyle = textView.style
 		textStyle.fontSize = buttonFontSize
 	end
+
 	setmetatable(o,{__index = _stepper})
 	return o
 end
@@ -649,6 +679,7 @@ function _stepper:setActionCallback(callback)
 	local textView = view:getSubview(2)
 	local reduceView = view:getSubview(1)
 	
+	local saveData = self.saveData
 	local maximum = self.config.maximum
 	local minimum = self.config.minimum
 	local step = self.config.step
@@ -665,13 +696,15 @@ function _stepper:setActionCallback(callback)
 			textView:setAttr('value',num-step)	
 		end
 	end
-	
+	local onINPUT = function (id)
+		local value = textView:getAttr('value')
+		saveData:put(id,value)
+	end
+
+	textView:setActionCallback(UI.ACTION.INPUT, onINPUT)
 	addView:setActionCallback(UI.ACTION.CLICK, onAdd)
 	reduceView:setActionCallback(UI.ACTION.CLICK, onReduce)
 	return self
-end
-function _layout:createStepper(Base)
-	return _stepper.createLayout(self,Base)
 end
 ------------------------------------------------------------------
 local _tabPage=class:new()
@@ -873,7 +906,7 @@ function _tabPage:createLayout(Base)
 
 	local list = Base.list or {}
 	local titleStyle = Base.titleStyle or {}
-	local  tabStyle = Base.tabStyle or {}
+	local tabStyle = Base.tabStyle or {}
 
 	local titleView = _tabPage.buildTitle(o,list,titleStyle)
 	local titleWidth = titleView.style.width
@@ -964,12 +997,24 @@ function _tabPage:getPage(index)
 		return self.config.pages
 	end
 end
+
+
+------------------------------------------------------------------
+function _layout:createOverlay(Base)
+	return _overlay.createLayout(self,Base)
+end
+function _layout:createButton(Base)
+	return _button.createLayout(self,Base)
+end
+function _layout:createInput(Base)
+	return _input.createLayout(self,Base)
+end
+function _layout:createStepper(Base)
+	return _stepper.createLayout(self,Base)
+end
 function _layout:createTabPage(Base)
 	return _tabPage.createLayout(self,Base)
 end
-
-------------------------------------------------------------------
-
 local _M={
 	rootView = _rootView,
 	layout = _layout,
