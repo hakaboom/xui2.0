@@ -6,16 +6,11 @@ show=true
 ui=rootView:createLayout({Area=Rect(100,100,1280,720),Color='rgba(255,255,255,0.1)'})
 context=ui:creatContext()
 
-callPrint = function (base)
-	local view = base.view
-	Print(base)
-end
-
 lable=layout:createLayout({id='lable',ui=ui,w=100,h=90}):addToRootView()
 
 
 page1=lable:createLayout({w=100,h=60,Color='red'}):addToSubview()
---page2=lable:createLayout({w=100,h=70}):addToSubview()
+
 a=page1:createTabPage({
 	list={
 		{value='1'},{value='2'},
@@ -34,17 +29,16 @@ a=page1:createTabPage({
 
 
 title=layout:createLayout({ui=ui,w=100,h=10,sort='row',Color='blue'}):addToRootView()
-b=title:createStepper({w=20,number=11,maximum=13,step=2}):addToSubview():setActionCallback(function()print(1) end)
-c=title:createInput({w=40,prompt="start"}):addToSubview():setActionCallback()
-d=title:createButton({w=40}):addToSubview():setActionCallback(function() ui:getSaveData():save() end)
-e=title:createOverlay():addToRootView():setActionCallback()
-
+--b=title:createStepper({w=20,number=11,maximum=13,step=2}):addToSubview():setActionCallback(function()print(1) end)
+--c=title:createInput({w=40,prompt="start"}):addToSubview():setActionCallback()
+d=title:createButton({w=40}):addToSubview():setActionCallback(function() e:show() end)
+e=title:createPopup({w=100,h=20}):show()
 
 
 
 
 ui:show()
-
+Print(e.overlay:getStyle())
 while show do
 	sleep(1000)
 end

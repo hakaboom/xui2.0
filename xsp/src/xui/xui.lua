@@ -3,7 +3,7 @@ local calSacle = function (x) return 750 / _width * x end
 
 local utils = require'xui.utils'
 
-local class={}
+local class = {}
 function class:new()
 	local o={
 	}
@@ -97,7 +97,7 @@ function class:addToRootView()
 	self.viewSwitch = true
 	return self
 end
-function class:addToSubview() 
+function class:addToSubview()
 	if self.viewSwitch then return end --防止重复添加
 	local context = self.context
 	local parentView = self.parentView
@@ -117,7 +117,7 @@ function class:getType()
 	return self.__tag
 end
 
-local _storage={}
+local _storage = {}
 function _storage:new(fileName)
 	local o ={
 		data={},
@@ -155,7 +155,7 @@ function _storage:save()
 	file:close()
 end
 ------------------------------------------------------------------
-local _rootView={}
+local _rootView = {}
 function _rootView:createLayout(Base)
 	local rect = Base.Area or Rect(0,0,_width,_height)
 	local width,height = calSacle(rect.width),calSacle(rect.height)
@@ -196,24 +196,30 @@ function _rootView:getSaveData()
 	return self.saveData
 end
 ------------------------------------------------------------------
-local  _overlay=class:new()
-local xui_overlay={
+local  _overlay =class:new()
+local xui_overlay = {
 	Count = 0,
 }
 function _overlay:createLayout(Base)
 	local Base = Base or {}
 	local style = Base.style or {}
-	local backgroundColor = style.backgroundColor or 'rgba(255,255,255,0.3)'
-
+	local backgroundColor = style.backgroundColor or 'rgb(0,0,0,0.4)'
+	if not Base.id then
+		xui_overlay.Count = xui_overlay.Count + 1
+	end
+	local id = utils.buildID('overlay',(Base.id or xui_overlay.Count))
+	
 	local o = {
 		__tag = 'overlay',
 		context = self.context,
+		saveData = self.saveData,
 		con = {
+			id = id,
 			view = 'div',
 			style = {
 				position = 'absolute',
 				backgroundColor = backgroundColor,
-				visibility = 'visible',
+				visibility = 'hidden',
 			},
 		},
 	}
@@ -221,7 +227,8 @@ function _overlay:createLayout(Base)
 	local rootView = o.context:getRootView()
 	local rootStyle = rootView:getStyles()
 	local width,height = rootStyle.width,rootStyle.height
-
+	o.con.width = width
+	o.con.height = height
 	o.con.style.width = width
 	o.con.style.height = height
 
@@ -238,13 +245,15 @@ function _overlay:setActionCallback(callback)
 end
 function _overlay:show()
 	self:setStyle('visibility','visible')
+	return self
 end
 function _overlay:hidden()
 	self:setStyle('visibility','hidden')
+	return self
 end
 ------------------------------------------------------------------
-local _layout=class:new()
-local xui_layout={
+local _layout = class:new()
+local xui_layout = {
 	Count = 0,
 }
 function _layout:createLayout(Base)
@@ -299,8 +308,8 @@ function _layout:setActionCallback(callback)
 	return self
 end
 ------------------------------------------------------------------
-local _button=class:new()
-local xui_button={
+local _button = class:new()
+local xui_button = {
 	Count = 0,
 	layout = function ()
 		return {
@@ -393,8 +402,9 @@ function _button:setValue(str)
 	end
 end
 ------------------------------------------------------------------
-local _popup=class:new()
+local _popup = class:new()
 local xui_popup = {
+	Count = 0,
 }
 function _popup:createLayout(Base)
 	local Base = Base or {}
@@ -409,20 +419,37 @@ function _popup:createLayout(Base)
 
 	local style = Base.style or {}
 	local backgroundColor = (style.backgroundColor or style['background-color']) or '#ffffff'
-
+	
 	local o = {
 		__tag = 'popup',
 		context = self.context,
 		saveData = self.saveData,
-		width = width,
-		height = height,
-		con = {
-		},
+		overlay = _overlay.createLayout(self)
 	}
+	
+	o.overlay:addToRootView():setActionCallback()
+	
+	local layout = _layout.createLayout(o.overlay,{w=(Base.w or 100),h=(Base.h or 100)})
+	layout.parentView = o.overlay:getView()
+	o.layout = layout
+	
+	setmetatable(o,{__index = _popup})
+	return o
+end
+function _popup:show()
+	self.overlay:show()
+	return self
+end
+function _popup:hide()
+	self.overlay:hide()
+	return self
+end
+function _popup:setActionCallback(callback)
+
 end
 ------------------------------------------------------------------
-local _input=class:new()
-local xui_input={
+local _input = class:new()
+local xui_input = {
 	Count = 0,
 	layout = function ()
 		return {
@@ -707,8 +734,8 @@ function _stepper:setActionCallback(callback)
 	return self
 end
 ------------------------------------------------------------------
-local _tabPage=class:new()
-local xui_tabPage={
+local _tabPage = class:new()
+local xui_tabPage = {
 	Count=0,
 	select_layout=function ()
 		return {
@@ -997,9 +1024,10 @@ function _tabPage:getPage(index)
 		return self.config.pages
 	end
 end
-
-
 ------------------------------------------------------------------
+function _layout:createPopup(Base)
+	return _popup.createLayout(self,Base)
+end
 function _layout:createOverlay(Base)
 	return _overlay.createLayout(self,Base)
 end
