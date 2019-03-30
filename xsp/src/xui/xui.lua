@@ -5,8 +5,7 @@ local utils = require'xui.utils'
 
 local class = {}
 function class:new()
-	local o={
-	}
+	local o={}
 	setmetatable(o,{__index = self})
 	return o
 end
@@ -97,7 +96,7 @@ function class:addToRootView()
 	self.viewSwitch = true
 	return self
 end
-function class:addToSubview()
+function class:addSubview()
 	if self.viewSwitch then return end --防止重复添加
 	local context = self.context
 	local parentView = self.parentView
@@ -116,6 +115,7 @@ end
 function class:getType()
 	return self.__tag
 end
+
 
 local _storage = {}
 function _storage:new(fileName)
@@ -154,14 +154,16 @@ function _storage:save()
 	file:flush()
 	file:close()
 end
-------------------------------------------------------------------
+
+
+
 local _rootView = {}
 function _rootView:createLayout(Base)
 	local rect = Base.Area or Rect(0,0,_width,_height)
 	local width,height = calSacle(rect.width),calSacle(rect.height)
 
 	local o={
-		__tag = 'root_UI',
+		__tag = 'root',
 		width = width,
 		height = height,
 		saveData = _storage:new(Base.config),
@@ -195,49 +197,118 @@ end
 function _rootView:getSaveData()
 	return self.saveData
 end
-------------------------------------------------------------------
-local  _overlay =class:new()
+
+
+local _layout = class:new()
+local xui_layout = {
+	Count = 0,
+}
+function _layout:createLayout(Base)
+	local context,saveData
+	local Base = Base or {}
+	
+	local xpos = Base.xpos and Base.xpos/100*(self.width or Base.ui.width) or 0
+	local ypos = Base.ypos and Base.ypos/100*(self.height or Base.ui.height) or 0
+	local width  = math.floor((Base.w or 100)/100*(self.width  or Base.ui.width))
+	local height = math.floor((Base.h or 100)/100*(self.height or Base.ui.height))
+	local view = Base.view=='scroller' and 'scroller' or 'div'
+	local flexDirection = Base.sort=='row' and 'row' or 'column'
+	local scrollDirection = Base.sort=='row' and 'horizontal' or 'vertical'
+	if not Base.id then
+		xui_layout.Count = xui_layout.Count + 1
+	end
+	local id = Base.id or utils.buildID('layout',xui_layout.Count)
+	local context = self.context or Base.ui.context
+	local saveData = self.saveData or Base.ui.saveData
+	
+	local o = {
+		__tag = 'layout',
+		context = context,
+		saveData = saveData,
+		parentView = self.layoutView,
+		width = width,
+		height = height,
+		con = {	
+			id = id,
+			view = view,
+			style ={
+				width = width,
+				height = height,
+				left = xpos,
+				top = ypos,
+				backgroundColor = Base.color or '#ffffff',
+				['flex-direction'] = flexDirection,
+			},
+			subviews = {},
+			['scroll-direction'] = scrollDirection,
+		},
+	}
+	
+	utils.mergeTable(o.con.style,Base.style)
+	setmetatable(o,{__index = _layout})
+	
+	return o
+end
+function _layout:setActionCallback(callback)
+	local view = self.layoutView
+	local onClicked = function (id,action)
+		local Base={id=id,action=action,view=view}
+		if callback then
+			callback(Base)
+		end
+	end
+	view:setActionCallback(UI.ACTION.CLICK, onClicked)
+	return self
+end
+
+
+local  _overlay = class:new()
 local xui_overlay = {
 	Count = 0,
 }
 function _overlay:createLayout(Base)
+	local context,saveData
 	local Base = Base or {}
-	local style = Base.style or {}
-	local backgroundColor = style.backgroundColor or 'rgb(0,0,0,0.4)'
+	
 	if not Base.id then
 		xui_overlay.Count = xui_overlay.Count + 1
 	end
 	local id = utils.buildID('overlay',(Base.id or xui_overlay.Count))
+	local context = self.context or Base.ui.context
+	local saveData = self.saveData or Base.ui.saveData
 	
 	local o = {
 		__tag = 'overlay',
-		context = self.context,
-		saveData = self.saveData,
+		context = context,
+		saveData = saveData,
 		con = {
 			id = id,
 			view = 'div',
 			style = {
+				backgroundColor = Base.color or 'rgba(0,0,0,0.4)',
 				position = 'absolute',
-				backgroundColor = backgroundColor,
 				visibility = 'hidden',
 			},
+			subviews = {},
 		},
 	}
 
-	local rootView = o.context:getRootView()
+	local rootView = context:getRootView()
 	local rootStyle = rootView:getStyles()
 	local width,height = rootStyle.width,rootStyle.height
-	o.con.width = width
-	o.con.height = height
+	o.width = width
+	o.height = height
 	o.con.style.width = width
 	o.con.style.height = height
 
 	setmetatable(o,{__index = _overlay})
+	
 	return o
 end
 function _overlay:setActionCallback(callback)
 	local view = self.layoutView
 	local onClicked = function (id,action)
+		print('close overlay')
 		view:setStyle('visibility','hidden')
 	end
 	view:setActionCallback(UI.ACTION.CLICK,onClicked)
@@ -251,88 +322,14 @@ function _overlay:hidden()
 	self:setStyle('visibility','hidden')
 	return self
 end
-------------------------------------------------------------------
-local _layout = class:new()
-local xui_layout = {
-	Count = 0,
-}
-function _layout:createLayout(Base)
-	local Base = Base or {}
-	local xpos = Base.xpos and Base.xpos/100*self.width or 0
-	local ypos = Base.ypos and Base.ypos/100*self.height or 0
-	local width = math.floor((Base.w or 100) /100*(self.width or ui.width))
-	local height = math.floor((Base.h or 100) /100*(self.height or ui.height))
-	if not Base.id then
-		xui_layout.Count = xui_layout.Count + 1
-	end
 
-	local o = {
-		__tag = 'layout',
-		context = self.context or Base.ui.context,
-		saveData = self.saveData or Base.ui.saveData,
-		parentView = self.layoutView,
-		viewSwitch = false,
-		width = width,
-		height = height,
-		con = {	
-			id = Base.id or 'xui.layout'..tostring(xui_layout.Count),
-			view = Base.view or 'div',
-			class = Base.class,
-			style ={
-				width = width,
-				height = height,
-				left = xpos,
-				top = ypos,
-				backgroundColor = Base.Color or 'rgb(255,255,255)',
-				['flex-direction'] = Base.sort or 'column',
-			},
-			subviews = {},
-			['scroll-direction'] = (Base.sort == 'row') and 'horizontal' or 'vertical',
-		},
-	}
-	
-	utils.mergeTable(o.con.style,Base.style)
-	setmetatable(o,{__index = _layout})
-	return o
-end
-function _layout:setActionCallback(callback)
-	local view = self.layoutView
-	local onClicked = function (id,action)
-		local Base={id=id,action=action,view=view}
-		if callback then
-			callback(Base)
-		end
-	end
-	view:setActionCallback(UI.ACTION.CLICK, onClicked)
-	view:setActionCallback(UI.ACTION.SWIPE, onClicked)
-	return self
-end
-------------------------------------------------------------------
+
 local _button = class:new()
 local xui_button = {
 	Count = 0,
-	layout = function ()
-		return {
-			view = 'div',
-			style = {
-                ['align-items'] = 'center',
-                ['justify-content'] = 'center',
-            },
-			subviews = {
-                {
-                    view = 'text',
-                    style = {
-                        ['text-overflow'] = 'ellipsis',
-                        ['font-size'] = 6,
-                        lines = 1,
-                    },
-                    value = '',
-                }
-            }
-		}
-	end,
 }
 function _button:createLayout(Base)
+	local context
 	local Base = Base or {}
 	local xpos = Base.xpos and Base.xpos/100*self.width or 0
 	local ypos = Base.ypos and Base.ypos/100*self.height or 0
@@ -341,45 +338,54 @@ function _button:createLayout(Base)
 	if not Base.id then
 		xui_button.Count = xui_button.Count + 1
 	end
-
+	local context = self.context or Base.ui.context
+	
+	local value = Base.value or ''
+	local style = Base.style or {}
+	local fontSize = style.fontSize or 18
+	local textColor = style.textColor or '#333333'
+	local backgroundColor = style.backgroundColor or '#ffffff'
+	local checkedBackgroundColor = style.checkedBackgroundColor or '#efeff0'
+	local borderRadius = style.borderRadius or 5
+	
 	local o = {
 		__tag = 'button',
-		context = self.context,
+		context = context,
 		parentView = self.layoutView,
 		width = width,
 		height = height,
 		con = {
+			id = id,
+			view = 'div',
+			style = {
+				width = width,
+				height = height,
+				left = xpos,
+				top = ypos,
+				backgroundColor  = backgroundColor,
+				['backgroundColor:active'] = checkedBackgroundColor,
+                ['align-items'] = 'center',
+                ['justify-content'] = 'center',	
+				borderRadius = borderRadius,
+			},
+			subviews = {
+				{
+					view = 'text',
+					value = value,
+					style = {
+						fontSize = fontSize,
+						color = textColor,				
+						['text-align'] = 'center',
+						['text-overflow'] = 'ellipsis',
+						lines = 1,
+					},
+				},
+			},
 		},
 	}
-	local style = Base.style or {}
-	local fontSize = (style.fontSize or style['font-size']) or 18
-	local textColor = style.textColor or '#333333'	
-	local backgroundColor = (style.backgroundColor or style['background-color']) or '#ffffff'
-	local checkedBackgroundColor = style.checkedBackgroundColor or '#efeff0'
-	local borderRadius = (style.borderRadius or  style['border-radius']) or 6
-	
-	local layout = xui_button.layout()
-	layout.id = utils.buildID('button',(Base.id or xui_button.Count))
-	utils.mergeTable(layout.style,{
-		width = width,
-		height = height,
-		left = xpos,
-		top = ypos,
-		borderRadius = borderRadius,
-		backgroundColor  = backgroundColor,
-		['backgroundColor:active'] = checkedBackgroundColor,
-	})
-	
-	utils.mergeTable(layout.subviews[1].style,{
-		fontSize = fontSize,
-		color = textColor,
-	})
-	
-	layout.subviews[1].value = Base.value
-
-	o.con = layout
 	
 	setmetatable(o,{__index = _button})
+	
 	return o
 end
 function _button:setActionCallback(callback)
@@ -401,38 +407,84 @@ function _button:setValue(str)
 		self.layoutView:getSubview(1):setAttr('value',str)
 	end
 end
-------------------------------------------------------------------
+
+
 local _popup = class:new()
 local xui_popup = {
 	Count = 0,
+	layoutStyle = {
+		left = {
+			['transition'] = 'left 1s ease-in-out',
+		},
+		top = {
+			['transition'] = 'top 1s ease-in-out',
+		},
+		right = {
+			['transition'] = 'left 1s ease-in-out',		
+		},
+		bottom = {
+			['transition'] = 'top 1s ease-in-out',	
+
+		},
+		middle = {
+			
+		},
+	},
+	overlayStyle = {
+		left = {
+			['justify-content'] = 'center',	
+			['align-items'] = 'flex-start'
+		},
+		top = {
+			['justify-content'] = 'flex-start',	
+			['align-items'] = 'center',			
+		},
+		right = {
+			['justify-content'] = 'center',	
+			['align-items'] = 'flex-end'		
+		},
+		bottom = {	
+			['justify-content'] = 'flex-end',	
+			['align-items'] = 'center',		
+		},
+		middle = {
+			['justify-content'] = 'center',	
+			['align-items'] = 'center',			
+		},
+	},
 }
 function _popup:createLayout(Base)
+	local context,saveData
 	local Base = Base or {}
-	local xpos = Base.xpos and Base.xpos/100*self.width or 0
-	local ypos = Base.ypos and Base.ypos/100*self.height or 0
-	local width = (Base.w or 100)/100*self.width
-	local height = (Base.h or 100)/100*self.height	
+	local xpos = Base.xpos and Base.xpos/100*(self.width or Base.ui.width) or 0
+	local ypos = Base.ypos and Base.ypos/100*(self.height or Base.ui.height) or 0
+	local width = math.floor((Base.w or 100) /100*(self.width or Base.ui.width))
+	local height = math.floor((Base.h or 100) /100*(self.height or Base.ui.height))
+	local direction = Base.direction or 'bottom'
 	if not Base.id then
 		xui_popup.Count = xui_popup.Count + 1
 	end
-	local id = utils.buildID('_popup',{Base.id or xui_popup.Count})
+	local id = utils.buildID('_popup',(Base.id or xui_popup.Count))
 
 	local style = Base.style or {}
 	local backgroundColor = (style.backgroundColor or style['background-color']) or '#ffffff'
 	
 	local o = {
 		__tag = 'popup',
-		context = self.context,
-		saveData = self.saveData,
-		overlay = _overlay.createLayout(self)
+		context = self.context or Base.ui.context,
+		saveData = self.saveData or Base.ui.saveData,
+		overlay = _overlay.createLayout((Base.ui or self))
 	}
 	
 	o.overlay:addToRootView():setActionCallback()
-	
-	local layout = _layout.createLayout(o.overlay,{w=(Base.w or 100),h=(Base.h or 100)})
-	layout.parentView = o.overlay:getView()
+	o.overlay:setStyle(xui_popup.overlayStyle[direction])
+
+	local layout = _layout.createLayout(o.overlay,{id=id,w=(Base.w or 100),h=(Base.h or 100),Color=backgroundColor})
 	o.layout = layout
-	
+	layout.parentView = o.overlay:getView()
+	layout:addSubview()
+	layout:setStyle(xui_popup.layoutStyle[direction])
+
 	setmetatable(o,{__index = _popup})
 	return o
 end
@@ -440,14 +492,18 @@ function _popup:show()
 	self.overlay:show()
 	return self
 end
-function _popup:hide()
+function _popup:hidden()
 	self.overlay:hide()
 	return self
+end
+function _popup:getView()
+	return self.layout:getView()
 end
 function _popup:setActionCallback(callback)
 
 end
-------------------------------------------------------------------
+
+
 local _input = class:new()
 local xui_input = {
 	Count = 0,
@@ -580,7 +636,8 @@ end
 function _input:getValue()
 	return self.saveData.value
 end
-------------------------------------------------------------------
+
+
 local _stepper=class:new()
 local xui_stepper={
 	Count = 0,
@@ -733,7 +790,8 @@ function _stepper:setActionCallback(callback)
 	reduceView:setActionCallback(UI.ACTION.CLICK, onReduce)
 	return self
 end
-------------------------------------------------------------------
+
+
 local _tabPage = class:new()
 local xui_tabPage = {
 	Count=0,
@@ -1024,6 +1082,8 @@ function _tabPage:getPage(index)
 		return self.config.pages
 	end
 end
+
+
 ------------------------------------------------------------------
 function _layout:createPopup(Base)
 	return _popup.createLayout(self,Base)
@@ -1046,5 +1106,7 @@ end
 local _M={
 	rootView = _rootView,
 	layout = _layout,
+	popup = _popup,
+	overlay = _overlay,
 }
 return _M
