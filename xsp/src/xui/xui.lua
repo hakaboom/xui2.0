@@ -15,19 +15,17 @@ function class:setStyle(...)
 	if (#tbl == 1) then
 		local styles = tbl[1]
 		if (type(tbl[1]) == 'table') then
-			if not rawget(self,'layoutView') then
-				utils.mergeTable(ViewStyle,styles)
-			else
+			if rawget(self,'layoutView') then
 				self.layoutView:setStyle(styles)
 			end
+			utils.mergeTable(ViewStyle,styles)
 		end
 	elseif (#tbl == 2) then
 		local key,value = tbl[1],tbl[2]
-		if not rawget(self,'layoutView') then
+			if rawget(self,'layoutView') then
+				self.layoutView:setStyle(key,value)
+			end
 			ViewStyle[key] = value
-		else
-			self.layoutView:setStyle(key,value)
-		end
 	end
 	return self
 end
@@ -36,20 +34,26 @@ function class:setAttr(...)
 	if (#tbl == 1) then
 		local Attrs = tbl[1]
 		if (type(tbl[1]) == 'table') then
-			if not rawget(self,'layoutView') then
-				utils.mergeTable(self.con,Attrs)
-			else
+			if rawget(self,'layoutView') then
 				self.layoutView:setAttr(Attrs)
 			end
+				utils.mergeTable(self.con,Attrs)
 		end
 	elseif (#tbl == 2) then
 		local key,value = tbl[1],tbl[2]
-		if not rawget(self,'layoutView') then
+			if rawget(self,'layoutView') then
+				self.layoutView:setAttr(key,value)
+			end
 			self.con[key] = value
-		else
-			self.layoutView:setAttr(key,value)
-		end
 	end
+	return self
+end
+function class:show()
+	self:setStyle('visibility','visible')
+	return self
+end
+function class:hidden()
+	self:setStyle('visibility','hidden')
 	return self
 end
 function class:getID()
@@ -84,7 +88,7 @@ function class:createView()
 	return self
 end
 function class:addToRootView()
-	if self.viewSwitch then return end
+	if self.viewSwitch then return self end
 	local context = self.context
 	local rootView = context:getRootView()
 
@@ -97,7 +101,7 @@ function class:addToRootView()
 	return self
 end
 function class:addSubview()
-	if self.viewSwitch then return end --防止重复添加
+	if self.viewSwitch then return self end 
 	local context = self.context
 	local parentView = self.parentView
 
@@ -155,11 +159,32 @@ function _storage:save()
 	file:close()
 end
 
+local object = {}
+function object:onCreateError(tag,parent,Base)
+	local str
+	if not parent.__tag and not parent.ui then
+		str = string.format('if called by %s.createLayout format,it must be had parameter ui',tag)
+	else
+		str = string.format('error in %s.createLayout',tag)
+	end
+	assert(false,str)
+end
+function object:createInit(tag,parent,Base) --return parent,Base
+	if (not parent.__tag and parent.ui) then
+		return parent.ui,parent
+	elseif (parent.__tag and not Base.ui) then
+		return parent,Base
+	elseif (parent.__tag and Base.ui) then
+		return Base.ui,Base
+	else
+		self:onCreateError(tag,parent,Base)
+	end
+end
 
 
 local _rootView = {}
 function _rootView:createLayout(Base)
-	local rect = Base.Area or Rect(0,0,_width,_height)
+	local rect = Base.area or Rect(0,0,_width,_height)
 	local width,height = calSacle(rect.width),calSacle(rect.height)
 
 	local o={
@@ -168,7 +193,7 @@ function _rootView:createLayout(Base)
 		height = height,
 		saveData = _storage:new(Base.config),
 		rootLayout = {
-			view = Base.view or 'scroller',
+			view = Base.view or 'div',
 			style ={	
 				width = width,
 				height = height,
@@ -186,6 +211,7 @@ end
 function _rootView:creatContext()
 	local context = UI.createContext(self.rootLayout,self.globalStyle)
 	self.context = context
+	self.layoutView = context:getRootView()
 	return context
 end
 function _rootView:show()
@@ -204,28 +230,30 @@ local xui_layout = {
 	Count = 0,
 }
 function _layout:createLayout(Base)
-	local context,saveData
 	local Base = Base or {}
+	local floor,parent,Base = math.floor,object:createInit('layout',self,Base)
 	
-	local xpos = Base.xpos and Base.xpos/100*(self.width or Base.ui.width) or 0
-	local ypos = Base.ypos and Base.ypos/100*(self.height or Base.ui.height) or 0
-	local width  = math.floor((Base.w or 100)/100*(self.width  or Base.ui.width))
-	local height = math.floor((Base.h or 100)/100*(self.height or Base.ui.height))
-	local view = Base.view=='scroller' and 'scroller' or 'div'
-	local flexDirection = Base.sort=='row' and 'row' or 'column'
-	local scrollDirection = Base.sort=='row' and 'horizontal' or 'vertical'
-	if not Base.id then
-		xui_layout.Count = xui_layout.Count + 1
-	end
+	local xpos   = floor((Base.xpos or 0)/100*parent.width)
+	local ypos   = floor((Base.ypos or 0)/100*parent.height)
+	local width  = floor((Base.w or 100)/100*parent.width)
+	local height = floor((Base.h or 100)/100*parent.height)
+	local context    = parent.context
+	local saveData   = parent.saveData
+	local parentView = parent.layoutView
+	
+	xui_layout.Count = not Base.id and xui_layout.Count +1
 	local id = Base.id or utils.buildID('layout',xui_layout.Count)
-	local context = self.context or Base.ui.context
-	local saveData = self.saveData or Base.ui.saveData
 	
+	local backgroundColor = Base.color or '#ffffff'
+	local view 			  = Base.view=='scroller' and 'scroller' or 'div'
+	local flexDirection   = Base.sort=='row' and 'row' or 'column'
+	local scrollDirection = flexDirection=='row' and 'horizontal' or 'vertical'
+
 	local o = {
 		__tag = 'layout',
 		context = context,
 		saveData = saveData,
-		parentView = self.layoutView,
+		parentView = parentView,
 		width = width,
 		height = height,
 		con = {	
@@ -236,17 +264,17 @@ function _layout:createLayout(Base)
 				height = height,
 				left = xpos,
 				top = ypos,
-				backgroundColor = Base.color or '#ffffff',
+				backgroundColor = backgroundColor,
 				['flex-direction'] = flexDirection,
 			},
 			subviews = {},
 			['scroll-direction'] = scrollDirection,
 		},
 	}
-	
 	utils.mergeTable(o.con.style,Base.style)
-	setmetatable(o,{__index = _layout})
 	
+	setmetatable(o,{__index = _layout})
+
 	return o
 end
 function _layout:setActionCallback(callback)
@@ -262,106 +290,88 @@ function _layout:setActionCallback(callback)
 end
 
 
-local  _overlay = class:new()
-local xui_overlay = {
-	Count = 0,
-}
-function _overlay:createLayout(Base)
-	local context,saveData
-	local Base = Base or {}
-	
-	if not Base.id then
-		xui_overlay.Count = xui_overlay.Count + 1
-	end
-	local id = utils.buildID('overlay',(Base.id or xui_overlay.Count))
-	local context = self.context or Base.ui.context
-	local saveData = self.saveData or Base.ui.saveData
-	
-	local o = {
-		__tag = 'overlay',
-		context = context,
-		saveData = saveData,
-		con = {
-			id = id,
-			view = 'div',
-			style = {
-				backgroundColor = Base.color or 'rgba(0,0,0,0.4)',
-				position = 'absolute',
-				visibility = 'hidden',
-			},
-			subviews = {},
-		},
-	}
-
-	local rootView = context:getRootView()
-	local rootStyle = rootView:getStyles()
-	local width,height = rootStyle.width,rootStyle.height
-	o.width = width
-	o.height = height
-	o.con.style.width = width
-	o.con.style.height = height
-
-	setmetatable(o,{__index = _overlay})
-	
-	return o
-end
-function _overlay:setActionCallback(callback)
-	local view = self.layoutView
-	local onClicked = function (id,action)
-		print('close overlay')
-		view:setStyle('visibility','hidden')
-	end
-	view:setActionCallback(UI.ACTION.CLICK,onClicked)
-	return self
-end
-function _overlay:show()
-	self:setStyle('visibility','visible')
-	return self
-end
-function _overlay:hidden()
-	self:setStyle('visibility','hidden')
-	return self
-end
-
-
 local _button = class:new()
 local xui_button = {
 	Count = 0,
+	style = {
+		btn = {
+			blue = {
+				backgroundColor = '#0F8DE8'
+			},
+			red = {
+				backgroundColor = '#ffc500',
+			},
+			yellow = {
+				backgroundColor = '#ffc900'
+			},
+			white = {
+				backgroundColor = '#fff',
+				['border-width'] = 1,
+				['border-color'] = '#A5A5A5',
+			},
+			disabled = {
+				opacity = 0.2,
+			},
+		},
+		text = {
+			blue = {
+				color = '#fff',
+			},
+			red = {
+				color = '#fff',
+			},
+			yellow = {
+				color = '#fff',
+			},
+			white = {
+				color = '#3d3d3d',
+			},
+			disabled = {
+				color = '#ffffff'
+			},
+		},
+	}
 }
 function _button:createLayout(Base)
-	local context
 	local Base = Base or {}
-	local xpos = Base.xpos and Base.xpos/100*self.width or 0
-	local ypos = Base.ypos and Base.ypos/100*self.height or 0
-	local width = math.floor((Base.w or 100) /100*(self.width or ui.width))
-	local height = math.floor((Base.h or 100) /100*(self.height or ui.height))
-	if not Base.id then
-		xui_button.Count = xui_button.Count + 1
-	end
-	local context = self.context or Base.ui.context
+	local floor,parent,Base = math.floor,object:createInit('button',self,Base)
+
+	local xpos   = floor((Base.xpos or 0)/100*parent.width)
+	local ypos   = floor((Base.ypos or 0)/100*parent.height)
+	local width  = floor((Base.w or 100)/100*parent.width)
+	local height = floor((Base.h or 100)/100*parent.height)
+	local context    = parent.context
+	local saveData   = parent.saveData
+	local parentView = parent.layoutView
 	
-	local value = Base.value or ''
+	xui_button.Count = not Base.id and xui_button.Count +1
+	local id = Base.id or utils.buildID('button',xui_button.Count)
+
+	local value = Base.text or ''
 	local style = Base.style or {}
-	local fontSize = style.fontSize or 18
-	local textColor = style.textColor or '#333333'
-	local backgroundColor = style.backgroundColor or '#ffffff'
-	local checkedBackgroundColor = style.checkedBackgroundColor or '#efeff0'
-	local borderRadius = style.borderRadius or 5
-	
+	local type					 = Base.type or 'white'
+	local disabled				 = Base.disabled or false
+	local fontSize 				 = (Base.fontSize or style.fontSize) or 18
+	local textColor 			 = style.textColor or '#333333'
+	local backgroundColor 	     = style.backgroundColor or '#ffffff'
+	local checkedBackgroundColor = style.checkedBackgroundColor
+	local borderRadius 			 = style.borderRadius or 5
+
 	local o = {
 		__tag = 'button',
 		context = context,
 		parentView = self.layoutView,
 		width = width,
 		height = height,
+		disabled = disabled,
 		con = {
 			id = id,
 			view = 'div',
 			style = {
-				width = width,
-				height = height,
 				left = xpos,
-				top = ypos,
+				top  = ypos,
+				width  = width,
+				height = height,
 				backgroundColor  = backgroundColor,
 				['backgroundColor:active'] = checkedBackgroundColor,
                 ['align-items'] = 'center',
@@ -384,6 +394,15 @@ function _button:createLayout(Base)
 		},
 	}
 	
+	utils.mergeTable(o.con.style,xui_button.style.btn[type])
+	utils.mergeTable(o.con.subviews[1].style,xui_button.style.text[type])
+	utils.mergeTable(o.con.style,Base.btnStyle)
+	utils.mergeTable(o.con.subviews[1].style,Base.textStyle)
+	if disabled then
+		utils.mergeTable(o.con.style,xui_button.style.btn.disabled)
+		utils.mergeTable(o.con.subviews[1].style,xui_button.style.text.disabled)
+		o.con.style['backgroundColor:active'] = nil
+	end
 	setmetatable(o,{__index = _button})
 	
 	return o
@@ -395,17 +414,71 @@ function _button:setActionCallback(callback)
 			callback(self)
 		end
 	end
-		view:setActionCallback(UI.ACTION.CLICK, onClicked)
-		view:setActionCallback(UI.ACTION.LONG_PRESS, onClicked)
+	
+	view:setActionCallback(UI.ACTION.CLICK, onClicked)
+	view:setActionCallback(UI.ACTION.LONG_PRESS, onClicked)
 	return self
 end
 function _button:setValue(str)
 	local str = tostring(str) or ''
-	if not self.layoutView then
-		self.con.subviews[1].value = str
-	else
+	if self.layoutView then
 		self.layoutView:getSubview(1):setAttr('value',str)
 	end
+		self.con.subviews[1].value = str
+end
+
+
+local  _overlay = class:new()
+local xui_overlay = {
+	Count = 0,
+}
+function _overlay:createLayout(Base)
+	local Base = Base or {}
+	local floor,parent,Base = math.floor,object:createInit('overlay',self,Base)
+	
+	local context  = parent.context
+	local saveData = parent.saveData
+	
+	xui_overlay.Count = not Base.id and xui_overlay.Count +1
+	local id = Base.id or utils.buildID('overlay',xui_overlay.Count)
+	local backgroundColor = Base.color or 'rgba(0,0,0,0.4)'
+	local rootView = context:getRootView()
+	local rootStyle = rootView:getStyles()
+	local width,height = rootStyle.width,rootStyle.height
+
+	local o = {
+		__tag = 'overlay',
+		context = context,
+		saveData = saveData,
+		parentView = rootView,
+		width = width,
+		height = height,
+		con = {
+			id = id,
+			view = 'div',
+			style = {
+				width = width,
+				height = height,
+				backgroundColor = backgroundColor,
+				position = 'absolute',
+				visibility = 'hidden',
+			},
+			subviews = {},
+		},
+	}
+	setmetatable(o,{__index = _overlay})
+	o:createView()
+	o:setActionCallback()
+	return o
+end
+function _overlay:setActionCallback(callback)
+	local view = self.layoutView
+	local onClicked = function (id,action)
+		print('close overlay')
+		view:setStyle('visibility','hidden')
+	end
+	view:setActionCallback(UI.ACTION.CLICK,onClicked)
+	return self
 end
 
 
