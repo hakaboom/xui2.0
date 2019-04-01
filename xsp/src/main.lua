@@ -5,20 +5,21 @@ setmetatable(_ENV,{__index=require'xui.xui'})
 show=true
 
 local mainUI=rootView:createLayout({area=Rect(100,100,1280,720),Color='rgba(255,255,255,0.1)'})
-context=mainUI:creatContext()
+local context=mainUI:createContext()
 
-lable=layout.createLayout({ui=mainUI,w=100,h=50,color='#00ffffff'}):addToParent()--:addToRootView()
+lable1=layout.createLayout({ui=mainUI,w=100,h=50,color='#00ffffff'}):addToParent()--:addToRootView()
+lable2=layout.createLayout({ui=mainUI,w=100,h=50,color='#00ffffff'}):addToParent()
 
-printLayout = function(base)
-	print(base:getID())
-end
+lable1:createButton({w=20,h=10,type='blue',text='lable1',fontSize=12}):addToParent():setActionCallback( function() 弹窗:show() end)
+lable2:createButton({w=20,h=10,type='blue',text='lable2',fontSize=12}):addToParent():setActionCallback( function() 弹窗:show() end)
 
-显示弹窗=lable:createButton({w=20,h=10,type='blue',text='显示弹窗',fontSize=12}):addToParent():setActionCallback(function() 弹窗:show() end)
-显示蒙层=lable:createButton({w=20,h=10,type='blue',text='显示蒙层',fontSize=12}):addToParent():setActionCallback(function() 蒙层1:show() end)
-蒙层1=lable:createOverlay({color='blue'})
-弹窗按钮=lable:createButton({w=30,h=20,type='yellow',text='弹窗'}):createView():setActionCallback(function() end)
-弹窗=lable:createPopup({view=弹窗按钮,direction='top'}):addToParent():show()
---
+弹窗=popup.createLayout({ui=mainUI,direction='middle',w=50,h=50}):show()
+Print(弹窗:getView())
+-- lable2=layout.createLayout({id='lable2',ui=mainUI,w=20,h=20,color='blue'})
+-- lable3=lable2:createLayout({id='lable3',w=50,h=100,color='red'}) 
+-- lable2:addSubview(lable3)
+-- lable:addSubview(lable2)
+
 --d=lable:createPopup()
 --a=page1:createTabPage({
 --	list={
@@ -45,7 +46,6 @@ end
 --e=overlay:createLayout({ui=ui,w=50,h=50}):addToRootView():setActionCallback():show()
 
 mainUI:show()
-
 while show do
 	sleep(1000)
 end

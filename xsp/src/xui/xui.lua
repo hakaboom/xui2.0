@@ -3,7 +3,53 @@ local calSacle = function (x) return 750 / _width * x end
 
 local utils = require'xui.utils'
 
+--[[
+	创建组件时将会继承父组件的context,layoutView,width,height.
 
+	-- 创建ui
+	mainUI = rootView:createLayout()
+
+	-- 底层控件 -- 放置在root中的控件在创建时必须指定ui
+	view1 = layout.creatrLayout({ui=mainUi})
+
+	-- 后续的控件可以选择两种写法 -- 后者写法必须传入指定ui
+	view1:createButton() 或者 button.createLayout({ui=view1})
+
+	-- 动态构建 -- createView
+	view1:createView()
+	将表中self.con调用context:createView生成UIView,并赋值与self.layoutView中
+
+	-- 添加至父组件 -- addToParent 
+	view1:addToParent()
+	首先会检测viewSwitch属性是否已加入进父组件中,再检测是否已调用过createView,再添加进父组件
+	!!	注意若父组件未进行过动态构建,其子组件无法使用addToParent
+
+	-- 添加至root组件 -- addToRootView
+	view1:addToRootView()
+	内容同addToParent,但是是添加进_root中
+
+	-- 添加子组件 -- addSubview
+	local view2 = view:createLayout({w=50,h=50})
+	view1:addSubview(view2)
+	将view2添加进view1中
+	!!	注意若添加的组件已添加至ui中,将无法添加进其他组件
+	error: component(当前ID) already has parent (父组件ID)
+
+	-- 显示组件 隐藏组件 -- show,hidden
+	为组件设置visibiltiy属性
+
+	-- 设置回调 -- setActionCallback
+	!!	注意设置回调前必须要进行过createView
+
+	-- 以下与xmod中模块相似
+	setStyle()
+	setAttr() 
+	getID() 
+	getStyle()
+	getSubview(index)
+	getType()
+	removeFromParent()
+]]
 local object = {}
 function object:onCreateError(tag,parent,Base)
 	local str
@@ -17,6 +63,8 @@ end
 function object:createInit(tag,parent,Base) --return parent,Base
 	if (not parent.__tag and parent.ui) then
 		return parent.ui,parent
+	elseif (not parent.__tag and Base.ui) then
+		return Base.ui,Base
 	elseif (parent.__tag and not Base.ui) then
 		return parent,Base
 	elseif (parent.__tag and Base.ui) then
@@ -28,6 +76,7 @@ end
 function object:ifViewAdded(id,viewID)
 	printf('component(ID:%s) have been added to (ID:%s)',id,viewID)
 end
+
 
 local class = {}
 function class:new()
@@ -153,9 +202,7 @@ end
 function class:addSubview(view)
 	local parent = self:getView()
 	if type(parent)=='table' then
-		for i = 1,view.con do
-			table.insert(parent.con,view.con[i])
-		end
+		table.insert(parent.subviews,view.con)
 	elseif type(parent)=='userdata' then
 		parent:addSubview(view.layoutView or view:createView():getView())
 	end
@@ -233,7 +280,7 @@ function _rootView:createLayout(Base)
 	setmetatable(o,{__index = self})
 	return o
 end
-function _rootView:creatContext()
+function _rootView:createContext()
 	local context = UI.createContext(self.rootLayout,self.globalStyle)
 	self.context = context
 	self.layoutView = context:getRootView()
@@ -457,7 +504,7 @@ local  _overlay = class:new()
 local xui_overlay = {
 	Count = 0,
 }
-function _overlay:createLayout(Base)
+function _overlay:createLayout(Base) --overlay会在创建时将view设置回调并添加进root组件中,如果不设置回调可能会导致无法点击,需调用hidden
 	local Base = Base or {}
 	local floor,parent,Base = math.floor,object:createInit('overlay',self,Base)
 	
@@ -492,12 +539,14 @@ function _overlay:createLayout(Base)
 		},
 	}
 	setmetatable(o,{__index = _overlay})
-	--构建时将会自动创建添加入root组件中并设置好回调事件
+
 	o:createView()
-	o:setActionCallback()
+	if not Base.unSetActionCallback then 
+		o:setActionCallback()
+	end
 	o:addToRootView()
 
-	return o
+	return o 
 end
 function _overlay:setActionCallback(callback)
 	local view = self.layoutView
@@ -576,6 +625,9 @@ function _popup:createLayout(Base)
 		saveData = saveData,
 		viewSwitch = true,
 		direction = direction,
+		--layoutView = 
+		--parentView = 
+		--layout = 
 	}
 	
 	--创建蒙层
@@ -584,7 +636,7 @@ function _popup:createLayout(Base)
 	overlay:setStyle(xui_popup.overlayStyle[direction])
 
 	--创建布局
-	local layout = Base.view or _layout.createLayout(overlay,{color='red',w=w,h=h,xpos=xpos,ypos=ypos})
+	local layout = Base.view or _layout.createLayout(overlay,{color=Base.color,w=w,h=h,xpos=xpos,ypos=ypos})
 	layout:setStyle(xui_popup.layoutStyle[direction])
 
 	overlay:addSubview(layout) --将布局添加至蒙层
@@ -630,20 +682,24 @@ local xui_input = {
 }
 function _input:createLayout(Base)
 	local Base = Base or {}
-	local xpos = Base.xpos and Base.xpos/100*self.width or 0
-	local ypos = Base.ypos and Base.ypos/100*self.height or 0
-	local width = (Base.w or 100)/100*self.width
-	local height = (Base.h or 100)/100*self.height
-	if not Base.id then
-		xui_input.Count = xui_input.Count + 1
-	end
-	local id = utils.buildID('input',(Base.id or xui_button.Count))
+	local floor,parent,Base = math.floor,object:createInit('input',self,Base)
+
+	local xpos   = floor((Base.xpos or 0)/100*parent.width)
+	local ypos   = floor((Base.ypos or 0)/100*parent.height)
+	local width  = floor((Base.w or 100)/100*parent.width)
+	local height = floor((Base.h or 100)/100*parent.height)
+	local context    = parent.context
+	local saveData   = parent.saveData
+	local parentView = parent.layoutView
+
+	xui_input.Count = not Base.id and xui_input.Count +1
+	local id = Base.id or utils.buildID('input',xui_input.Count)
 
 	local o = {
 		__tag = 'input',
-		context = self.context,
-		parentView = self.layoutView,
-		saveData = self.saveData,
+		context = context,
+		parentView = parentView,
+		saveData = saveData,
 		width = width,
 		height = height,
 		con = {
@@ -662,22 +718,21 @@ function _input:createLayout(Base)
 	local kbtype = Base.kbtype or 'text'
 	local prompt = o.saveData:get(id,Base.prompt)
 	local placeholder = Base.placeholder or ''
-	local disabled = Base.disabled or false
-	local autofocus = Base.autofocus or false
-	local maxlength = Base.maxlength or 999
-	local singleline = Base.singleline or true
+	local disabled    = Base.disabled or false
+	local autofocus   = Base.autofocus or false
+	local maxlength   = Base.maxlength or 999
+	local singleline  = Base.singleline or true
 
 	local style = Base.style or {}
-	local fontSize = (style.fontSize or style['font-size']) or 18
-	local textColor = style.textColor or '#666666'
-	local backgroundColor = (style.backgroundColor or style['background-color']) or '#e5e5e5'
-	local checkedBackgroundColor = style.checkedBackgroundColor or '#000000'
-	local layout = xui_input.layout()
+	local fontSize 					 	 = (Base.fontSize or (style.fontSize or style['font-size'])) or 18
+	local textColor 					 = (Base.textColor or style.textColor) or '#666666'
+	local backgroundColor 				 = (Base.color or (style.backgroundColor or style['background-color'])) or '#e5e5e5'
+	local checkedBackgroundColor 		 = style.checkedBackgroundColor or '#000000'
 	
-	local cancelStyle = style.cancelStyle or {}
-	local cancelFontSize = cancelStyle.fontSize or 15
-	local cancelBackgroundColor = cancelStyle.backgroundColor or '#eeeeee'
-	local cancelCheckedBackgroundColor = cancelStyle.cancelCheckedBackgroundColor or cancelBackgroundColor
+	local cancelStyle 					 = style.cancelStyle or {}
+	local cancelFontSize 				 = cancelStyle.fontSize or 15
+	local cancelBackgroundColor  		 = cancelStyle.backgroundColor or '#eeeeee'
+	local cancelCheckedBackgroundColor   = cancelStyle.cancelCheckedBackgroundColor or cancelBackgroundColor
 
 	o.con.style.backgroundColor = backgroundColor
 	local inputLayout = {
@@ -749,8 +804,12 @@ end
 function _input:getValue()
 	return self.saveData.value
 end
-
-
+function _input:setValue(str)
+	local str=str or ''
+	self:setAttr('value',str)
+	return self
+end
+---以下还没整
 local _stepper=class:new()
 local xui_stepper={
 	Count = 0,
