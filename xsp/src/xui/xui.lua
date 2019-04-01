@@ -3,6 +3,32 @@ local calSacle = function (x) return 750 / _width * x end
 
 local utils = require'xui.utils'
 
+
+local object = {}
+function object:onCreateError(tag,parent,Base)
+	local str
+	if not parent.__tag and not parent.ui then
+		str = string.format('if called by %s.createLayout format,it must be had parameter ui',tag)
+	else
+		str = string.format('error in %s.createLayout',tag)
+	end
+	assert(false,str)
+end
+function object:createInit(tag,parent,Base) --return parent,Base
+	if (not parent.__tag and parent.ui) then
+		return parent.ui,parent
+	elseif (parent.__tag and not Base.ui) then
+		return parent,Base
+	elseif (parent.__tag and Base.ui) then
+		return Base.ui,Base
+	else
+		self:onCreateError(tag,parent,Base)
+	end
+end
+function object:ifViewAdded(id,viewID)
+	printf('component(ID:%s) have been added to (ID:%s)',id,viewID)
+end
+
 local class = {}
 function class:new()
 	local o={}
@@ -57,6 +83,9 @@ function class:hidden()
 	return self
 end
 function class:getID()
+	if self.layoutView then
+		return self.layoutView:getID()
+	end
 	return self.con.id
 end
 function class:getStyle()
@@ -88,7 +117,11 @@ function class:createView()
 	return self
 end
 function class:addToRootView()
-	if self.viewSwitch then return self end
+	if self.viewSwitch then 
+		object:ifViewAdded(self:getID(),'root')
+		return self
+	end
+
 	local context = self.context
 	local rootView = context:getRootView()
 
@@ -100,8 +133,12 @@ function class:addToRootView()
 	self.viewSwitch = true
 	return self
 end
-function class:addSubview()
-	if self.viewSwitch then return self end 
+function class:addToParent()
+	if self.viewSwitch then 
+		object:ifViewAdded(self:getID(),self.parentView:getID())
+		return self
+	end 
+
 	local context = self.context
 	local parentView = self.parentView
 
@@ -112,6 +149,16 @@ function class:addSubview()
 	parentView:addSubview(self.layoutView)
 	self.viewSwitch = true
 	return self
+end
+function class:addSubview(view)
+	local parent = self:getView()
+	if type(parent)=='table' then
+		for i = 1,view.con do
+			table.insert(parent.con,view.con[i])
+		end
+	elseif type(parent)=='userdata' then
+		parent:addSubview(view.layoutView or view:createView():getView())
+	end
 end
 function class:removeFromParent()
 	self.layoutView:removeFromParent()
@@ -135,7 +182,7 @@ function _storage:new(fileName)
 	local str = file:read('*a')
 	file:close()
 	if #str~=0 then
-		printf('read config by %s',o.path)
+	--	printf('read config by %s',o.path)
 		o.data = cjson.decode(str)
 	end
 	
@@ -157,28 +204,6 @@ function _storage:save()
 	file:write(str)
 	file:flush()
 	file:close()
-end
-
-local object = {}
-function object:onCreateError(tag,parent,Base)
-	local str
-	if not parent.__tag and not parent.ui then
-		str = string.format('if called by %s.createLayout format,it must be had parameter ui',tag)
-	else
-		str = string.format('error in %s.createLayout',tag)
-	end
-	assert(false,str)
-end
-function object:createInit(tag,parent,Base) --return parent,Base
-	if (not parent.__tag and parent.ui) then
-		return parent.ui,parent
-	elseif (parent.__tag and not Base.ui) then
-		return parent,Base
-	elseif (parent.__tag and Base.ui) then
-		return Base.ui,Base
-	else
-		self:onCreateError(tag,parent,Base)
-	end
 end
 
 
@@ -467,8 +492,11 @@ function _overlay:createLayout(Base)
 		},
 	}
 	setmetatable(o,{__index = _overlay})
+	--构建时将会自动创建添加入root组件中并设置好回调事件
 	o:createView()
 	o:setActionCallback()
+	o:addToRootView()
+
 	return o
 end
 function _overlay:setActionCallback(callback)
@@ -527,39 +555,50 @@ local xui_popup = {
 	},
 }
 function _popup:createLayout(Base)
-	local context,saveData
 	local Base = Base or {}
-	local xpos = Base.xpos and Base.xpos/100*(self.width or Base.ui.width) or 0
-	local ypos = Base.ypos and Base.ypos/100*(self.height or Base.ui.height) or 0
-	local width = math.floor((Base.w or 100) /100*(self.width or Base.ui.width))
-	local height = math.floor((Base.h or 100) /100*(self.height or Base.ui.height))
-	local direction = Base.direction or 'bottom'
-	if not Base.id then
-		xui_popup.Count = xui_popup.Count + 1
-	end
-	local id = utils.buildID('_popup',(Base.id or xui_popup.Count))
+	local parent,Base = object:createInit('popup',self,Base)
 
-	local style = Base.style or {}
-	local backgroundColor = (style.backgroundColor or style['background-color']) or '#ffffff'
-	
+	local xpos   = Base.xpos or 0
+	local ypos   = Base.ypos or 0
+	local w  = Base.w or 100
+	local h  = Base.h or 100
+
+	local context = parent.context
+	local saveData = parent.saveData
+
+	xui_popup.Count = not Base.id and xui_popup.Count + 1
+	local id = Base.id or utils.buildID('popup',xui_popup.Count)
+	local direction = Base.direction or 'middle'
+
 	local o = {
 		__tag = 'popup',
-		context = self.context or Base.ui.context,
-		saveData = self.saveData or Base.ui.saveData,
-		overlay = _overlay.createLayout((Base.ui or self))
+		context = context,
+		saveData = saveData,
+		viewSwitch = true,
+		direction = direction,
 	}
 	
-	o.overlay:addToRootView():setActionCallback()
-	o.overlay:setStyle(xui_popup.overlayStyle[direction])
+	--创建蒙层
+	local overlay = _overlay.createLayout(parent):addToRootView()
+	o.overlay = overlay
+	overlay:setStyle(xui_popup.overlayStyle[direction])
 
-	local layout = _layout.createLayout(o.overlay,{id=id,w=(Base.w or 100),h=(Base.h or 100),Color=backgroundColor})
-	o.layout = layout
-	layout.parentView = o.overlay:getView()
-	layout:addSubview()
+	--创建布局
+	local layout = Base.view or _layout.createLayout(overlay,{color='red',w=w,h=h,xpos=xpos,ypos=ypos})
 	layout:setStyle(xui_popup.layoutStyle[direction])
+
+	overlay:addSubview(layout) --将布局添加至蒙层
+
+	o.layout = layout
+	o.layoutView = layout:getView()
+	o.parentView = overlay:getView()
 
 	setmetatable(o,{__index = _popup})
 	return o
+end
+function _popup:setStyle(...)
+	self.layout:setStyle(...)
+	return self
 end
 function _popup:show()
 	self.overlay:show()
@@ -569,11 +608,12 @@ function _popup:hidden()
 	self.overlay:hide()
 	return self
 end
-function _popup:getView()
-	return self.layout:getView()
-end
 function _popup:setActionCallback(callback)
-
+	self.layoutView:setActionCallback(callback)
+	return self
+end
+function _popup:getView()	--将会返回添加进蒙层的控件
+	return self.layout:getView() 
 end
 
 
