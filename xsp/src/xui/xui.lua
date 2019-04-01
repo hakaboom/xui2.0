@@ -1,5 +1,12 @@
-local _width,_height=screen.getSize().width,screen.getSize()._height
-local calSacle = function (x) return 750 / _width * x end
+local _width,_height=screen.getSize().width,screen.getSize().height
+
+if screen.getOrientation() >= screen.PORTRAIT then
+	_width,_height = _height,_width
+end
+
+local calSacle = function (x) 
+	return 750 / _width * x 
+end
 
 local utils = require'xui.utils'
 
@@ -223,7 +230,7 @@ function _storage:new(fileName)
 	}
 	
 	local cjson = require'cjson'
-	local file = io.open(o.path,'a')	
+	io.open(o.path,'a')	
 	local file = io.open(o.path,'r')
 
 	local str = file:read('*a')
@@ -258,7 +265,7 @@ local _rootView = {}
 function _rootView:createLayout(Base)
 	local rect = Base.area or Rect(0,0,_width,_height)
 	local width,height = calSacle(rect.width),calSacle(rect.height)
-
+	local left,top = calSacle(rect.x),calSacle(rect.y)
 	local o={
 		__tag = 'root',
 		width = width,
@@ -267,11 +274,11 @@ function _rootView:createLayout(Base)
 		rootLayout = {
 			view = Base.view or 'div',
 			style ={	
-				width = width,
+				width  = width,
 				height = height,
-				left = calSacle(rect.x),
-				top	= calSacle(rect.y),
-				backgroundColor = Base.Color or 'white',
+				left = left,
+				top	 = top,
+				backgroundColor = Base.color or 'white',
 			},
 			subviews = {},
 		},
@@ -665,7 +672,7 @@ function _popup:setActionCallback(callback)
 	return self
 end
 function _popup:getView()	--将会返回添加进蒙层的控件
-	return self.layout:getView() 
+	return self.layout
 end
 
 
@@ -678,7 +685,11 @@ local xui_input = {
 			style = {},
 			value = '',
 		}
-	end
+	end,
+	THEME = {
+		
+	
+	}
 }
 function _input:createLayout(Base)
 	local Base = Base or {}
@@ -724,17 +735,14 @@ function _input:createLayout(Base)
 	local singleline  = Base.singleline or true
 
 	local style = Base.style or {}
-	local fontSize 					 	 = (Base.fontSize or (style.fontSize or style['font-size'])) or 18
-	local textColor 					 = (Base.textColor or style.textColor) or '#666666'
-	local backgroundColor 				 = (Base.color or (style.backgroundColor or style['background-color'])) or '#e5e5e5'
-	local checkedBackgroundColor 		 = style.checkedBackgroundColor or '#000000'
+	local fontSize 					 	 = (style.fontSize or (Base.fontSize or style['font-size'])) or 18
+	local textColor 					 = (style.textColor or Base.textColor) or '#666666'
+	local backgroundColor 				 = ((style.backgroundColor or style['background-color']) or Base.color) or '#e5e5e5'
+	local checkedBackgroundColor 		 = style.checkedBackgroundColor or backgroundColor
 	
-	local cancelStyle 					 = style.cancelStyle or {}
-	local cancelFontSize 				 = cancelStyle.fontSize or 15
-	local cancelBackgroundColor  		 = cancelStyle.backgroundColor or '#eeeeee'
-	local cancelCheckedBackgroundColor   = cancelStyle.cancelCheckedBackgroundColor or cancelBackgroundColor
 
 	o.con.style.backgroundColor = backgroundColor
+
 	local inputLayout = {
 		id = id,
 		view = 'input',
@@ -750,43 +758,22 @@ function _input:createLayout(Base)
 			height = height,
 			fontSize = fontSize,
 			color = textColor,
-			['padding-left'] = 6,	
+			backgroundColor = backgroundColor,
+			['backgroundColor:focus'] = checkedBackgroundColor,
+			['padding-left'] = 5,	
 		},
 	}
 	o.con.subviews[1] = inputLayout
 	
-	local cancel = self.createButton(o,{w=20,value='取消',style={
-		backgroundColor = cancelBackgroundColor,
-		fontSize = cancelFontSize,
-		borderRadius = 0,
-		checkedBackgroundColor = cancelCheckedBackgroundColor
-	}})
-
-	cancel:setStyle({
-		left = width*0.8,
-		visibility = 'hidden',
-		position = 'absolute',
-	})
-
-	o.con.subviews[2] = cancel:getView()
-	
 	setmetatable(o,{__index = _input})
+	
 	return o
 end
 function _input:setActionCallback(callback)
 	local view = self.layoutView
 	local inputView = view:getSubview(1)
-	local cancel = view:getSubview(2)
 	local saveData = self.saveData
 
-	local onClicked = function (id,action)
-		cancel:setStyle('visibility','visible')
-		inputView:setAttr('disabled',false)
-	end
-	local onCancel = function (id,action)
-		cancel:setStyle('visibility','hidden')
-		inputView:setAttr('disabled',true)
-	end
 	local onINPUT = function (id,action)
 		local value = inputView:getAttr('value')
 		local Base = {id=id,action=action,view=view,value=value}
@@ -796,8 +783,6 @@ function _input:setActionCallback(callback)
 		end
 	end
 	
-	cancel:setActionCallback(UI.ACTION.CLICK,onCancel)
-	inputView:setActionCallback(UI.ACTION.CLICK,onClicked)
 	inputView:setActionCallback(UI.ACTION.INPUT,onINPUT)
 	return self
 end
@@ -809,6 +794,7 @@ function _input:setValue(str)
 	self:setAttr('value',str)
 	return self
 end
+
 ---以下还没整
 local _stepper=class:new()
 local xui_stepper={
