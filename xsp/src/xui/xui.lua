@@ -56,6 +56,11 @@ local utils = require'xui.utils'
 	getSubview(index)
 	getType()
 	removeFromParent()
+
+	-- 有关蒙层
+	蒙层是创建在root上的组件,由于限制,因次会有一个先后的顺序,排列在蒙层后的组件,会显示在蒙层之上
+	因此的话,建议可以在创建ui时优先对root组件构建好布局,保证蒙层可以始终创建在root组件的最顶层。
+
 ]]
 local object = {}
 function object:onCreateError(tag,parent,Base)
@@ -368,6 +373,157 @@ function _layout:setActionCallback(callback)
 	return self
 end
 
+local _lable = class:new()
+local xui_lable = {
+	Count = 1,
+	viewType = {
+		text = function ()
+			return {
+				view = 'text',
+				value = '',
+				style = {
+					lines = 1,
+					['text-align'] = 'center',
+				},
+			}
+		end,
+		icon = function ()
+			return {
+				view = 'image',
+				src = '',
+				style = {},
+			}
+		end,
+		tag = function ()
+			return {
+				view = 'div',
+				style = {
+					['justify-content'] = 'center',
+					['align-items'] = 'center',
+				},
+				subviews = {
+					{
+						view = 'text',
+						value = '',
+						style = {
+							lines = 1,
+							margin = 5,
+							['text-align'] = 'center',
+						},
+					},
+				},
+			}
+		end,
+	},
+	THEME = {
+		black = {
+			color = '#fff',
+			borderColor = '#fff'
+		},
+		red = {
+			color = '#ed3d03',
+			borderColor = '#ed3d03',
+		},
+		blue = {
+			color = '#0F8DE8',
+			borderColor = '#0F8DE8'
+		},
+		yellow = {
+			color = '#ffc900',
+			borderColor = '#ffc900',
+		},
+	},
+}
+function _lable:createLayout(Base)
+	local Base = Base or {}
+	local floor,parent,Base = math.floor,object:createInit('lable',self,Base)
+
+	local xpos   = floor((Base.xpos or 0)/100*parent.width)
+	local ypos   = floor((Base.ypos or 0)/100*parent.height)
+	local width  = floor((Base.w or 100)/100*parent.width)
+	local height = floor((Base.h or 100)/100*parent.height)
+	local context    = parent.context
+	local saveData   = parent.saveData
+	local parentView = parent.layoutView
+
+	xui_lable.Count = not Base.id and xui_lable.Count + 1
+	local id = Base.id or utils.buildID('lable',xui_lable.Count)
+
+	local value = Base.text or ''
+	local icon  = Base.icon or ''
+	local theme = Base.theme
+	local style = Base.style or {}
+	local richType = utils.split((Base.type or 'text'),'&')
+	local fontSize 				= style.fontSize or 18
+	local lines					= style.lines or 1
+	local textColor 			= (style.textColor 	 or xui_lable.THEME[theme].color) or '#333'
+	local borderColor 			= (style.boredrColor or xui_lable.THEME[theme].borderColor) or '#000'
+	local borderWidth 			= style.borderWidth or 1
+	local borderRadius 			= style.borderRadius or 5
+	local backgroundColor 		= style.backgroundColor or '#fff'
+
+	local o = {
+		__tag = 'lable',
+		__type = type,
+		context = context,
+		parentView = parentView,
+		width = width,
+		height = height,
+		con = {
+			id = id,
+			view = 'div',
+			style = {
+				width = width,
+				height = height,
+				left = xpos,
+				top = ypos,
+				backgroundColor = backgroundColor,
+				['flex-direction'] = 'row',
+			},
+			subviews = {},
+		},
+	}
+
+	for k,v in pairs(richType) do
+		local type = v
+		local view
+		if (type=='text') or (type=='link') then
+			view = xui_lable.viewType.text()
+			view.value = value
+			view.style.width 	= (style.textWidth or 100)*width/100
+			view.style.height 	= (style.textHeight or 100)*height/100
+			view.style.fontSize = fontSize
+			view.style.color 	= textColor or xui_lable.THEME[theme].color
+			view.style.lines 	= lines
+			
+		elseif (type=='icon') then
+			view = xui_lable.viewType.icon()
+			view.src = icon 
+			view.style.width    = (style.iconWidth or 100)*width/100
+			view.style.height   = (style.iconHeight or 100)*height/100
+		elseif (type=='tag') then
+			view = xui_lable.viewType.tag()
+			view.style.width = width
+			view.style.height = height 
+			view.style.backgroundColor  = backgroundColor
+			view.style['border-radius'] 	= borderRadius
+			view.style['border-color'] 		= borderColor 
+			view.style['border-width']		= borderWidth 
+
+			local textView = view.subviews[1]
+			textView.value = value
+			textView.style.fontSize = fontSize
+			textView.style.color 	= textColor 
+			textView.style.lines 	= lines
+		end 
+
+		table.insert(o.con.subviews,view)
+	end
+
+	setmetatable(o,{__index = _lable})
+	return o
+end
+
 
 local _button = class:new()
 local xui_button = {
@@ -428,18 +584,18 @@ function _button:createLayout(Base)
 
 	local value = Base.text or ''
 	local style = Base.style or {}
-	local type					 = Base.type or 'white'
+	local type					 = Base.type
 	local disabled				 = Base.disabled or false
-	local fontSize 				 = (Base.fontSize or style.fontSize) or 18
-	local textColor 			 = style.textColor or '#333333'
-	local backgroundColor 	     = style.backgroundColor or '#ffffff'
+	local fontSize 				 = (style.fontSize or Base.fontSize) or 18
+	local textColor 			 = (style.textColor or Base.textColor) or '#333333'
+	local backgroundColor 	     = (style.backgroundColor or style.backgroundColor) or '#ffffff'
 	local checkedBackgroundColor = style.checkedBackgroundColor
 	local borderRadius 			 = style.borderRadius or 5
 
 	local o = {
 		__tag = 'button',
 		context = context,
-		parentView = self.layoutView,
+		parentView = parentView,
 		width = width,
 		height = height,
 		disabled = disabled,
@@ -465,16 +621,17 @@ function _button:createLayout(Base)
 						fontSize = fontSize,
 						color = textColor,				
 						['text-align'] = 'center',
-						['text-overflow'] = 'ellipsis',
 						lines = 1,
 					},
 				},
 			},
 		},
 	}
-	
+
+	--div
 	utils.mergeTable(o.con.style,xui_button.style.btn[type])
 	utils.mergeTable(o.con.subviews[1].style,xui_button.style.text[type])
+	--text
 	utils.mergeTable(o.con.style,Base.btnStyle)
 	utils.mergeTable(o.con.subviews[1].style,Base.textStyle)
 	if disabled then
@@ -1243,6 +1400,9 @@ end
 
 
 ------------------------------------------------------------------
+function _layout:createLable(Base)
+	return _lable.createLayout(self,Base)
+end
 function _layout:createPopup(Base)
 	return _popup.createLayout(self,Base)
 end
