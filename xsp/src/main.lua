@@ -15,10 +15,15 @@ lable1:setAttr('href','www.baidu.com')
 
 弹窗=popup.createLayout({ui=mainUI,direction='middle',w=50,h=50})
 popup1=弹窗:getView()
-popup1:createLayout():addToParent()
-输入框=lable1:createInput({w=35,h=40}):addToParent():setActionCallback()
 
-richText1=lable1:createLable({text='11111asdadadadadascsdvads jkvsdbvjkadbvjkdhjkdhvkjhjakhjkhsdjvkhck',w=50,h=20,theme='black'}):addToParent()
+components={
+	{type='text',value='黄色主题',theme='yellow'},
+	{type='link',value='自定义颜色link',href='www.baidu.com',style={textColor='#546E7A'}},
+	{type='text',value='自定义颜色',style={textColor='#546E7A'}},
+	{type='tag' ,value='满100减20',theme='red'},
+	{type='tag',value='自定义标签',style={textColor='#ffffff',boredrColor='#3d3d3d',backgroundColor='#546E7A'}}
+}
+richText1=popup1:createRichText({list=components,fontSize=12}):addToParent()
 -- lable2=layout.createLayout({id='lable2',ui=mainUI,w=20,h=20,color='blue'})
 -- lable3=lable2:createLayout({id='lable3',w=50,h=100,color='red'}) 
 -- lable2:addSubview(lable3)

@@ -373,8 +373,8 @@ function _layout:setActionCallback(callback)
 	return self
 end
 
-local _lable = class:new()
-local xui_lable = {
+local _richText = class:new()
+local xui_richText = {
 	Count = 1,
 	viewType = {
 		text = function ()
@@ -383,6 +383,7 @@ local xui_lable = {
 				value = '',
 				style = {
 					lines = 1,
+					margin = 5,
 					['text-align'] = 'center',
 				},
 			}
@@ -417,8 +418,8 @@ local xui_lable = {
 	},
 	THEME = {
 		black = {
-			color = '#fff',
-			borderColor = '#fff'
+			color = '#000',
+			borderColor = '#000'
 		},
 		red = {
 			color = '#ed3d03',
@@ -434,9 +435,9 @@ local xui_lable = {
 		},
 	},
 }
-function _lable:createLayout(Base)
+function _richText:createLayout(Base)
 	local Base = Base or {}
-	local floor,parent,Base = math.floor,object:createInit('lable',self,Base)
+	local floor,parent,Base = math.floor,object:createInit('richText',self,Base)
 
 	local xpos   = floor((Base.xpos or 0)/100*parent.width)
 	local ypos   = floor((Base.ypos or 0)/100*parent.height)
@@ -446,25 +447,21 @@ function _lable:createLayout(Base)
 	local saveData   = parent.saveData
 	local parentView = parent.layoutView
 
-	xui_lable.Count = not Base.id and xui_lable.Count + 1
-	local id = Base.id or utils.buildID('lable',xui_lable.Count)
+	xui_richText.Count = not Base.id and xui_richText.Count + 1
+	local id = Base.id or utils.buildID('richText',xui_richText.Count)
 
-	local value = Base.text or ''
-	local icon  = Base.icon or ''
-	local theme = Base.theme
+	local list  = Base.list
 	local style = Base.style or {}
-	local richType = utils.split((Base.type or 'text'),'&')
-	local fontSize 				= style.fontSize or 18
+	local fontSize 				= style.fontSize or 16
 	local lines					= style.lines or 1
-	local textColor 			= (style.textColor 	 or xui_lable.THEME[theme].color) or '#333'
-	local borderColor 			= (style.boredrColor or xui_lable.THEME[theme].borderColor) or '#000'
+	local textColor 			= style.textColor or '#333'
+	local borderColor 			= style.boredrColor or '#000'
 	local borderWidth 			= style.borderWidth or 1
 	local borderRadius 			= style.borderRadius or 5
 	local backgroundColor 		= style.backgroundColor or '#fff'
 
 	local o = {
 		__tag = 'lable',
-		__type = type,
 		context = context,
 		parentView = parentView,
 		width = width,
@@ -473,8 +470,6 @@ function _lable:createLayout(Base)
 			id = id,
 			view = 'div',
 			style = {
-				width = width,
-				height = height,
 				left = xpos,
 				top = ypos,
 				backgroundColor = backgroundColor,
@@ -483,44 +478,58 @@ function _lable:createLayout(Base)
 			subviews = {},
 		},
 	}
-
-	for k,v in pairs(richType) do
-		local type = v
-		local view
-		if (type=='text') or (type=='link') then
-			view = xui_lable.viewType.text()
-			view.value = value
-			view.style.width 	= (style.textWidth or 100)*width/100
-			view.style.height 	= (style.textHeight or 100)*height/100
-			view.style.fontSize = fontSize
-			view.style.color 	= textColor or xui_lable.THEME[theme].color
-			view.style.lines 	= lines
-			
+	
+	local linkConfig = {}
+	for k,v in pairs(list) do
+		local type  = v.type
+		local theme = xui_richText.THEME[v.theme] or {}
+		local style = v.style or {}
+		
+		if (type=='text') then
+			view = xui_richText.viewType.text()
+			view.value = v.value or ''
+			view.style.fontSize 	= style.fontSize or fontSize
+			view.style.color 		= (style.textColor or theme.color) or textColor
+			view.style.lines 		= style.lines or lines
+		elseif type=='link' then
+			view = xui_richText.viewType.text()
+			view.value = v.value or ''
+			view.style.fontSize 	= style.fontSize or fontSize
+			view.style.color 		= (style.textColor or theme.color) or textColor
+			view.style.lines 		= style.lines or lines
+			table.insert(linkConfig,{
+				index=k,href=v.href,
+			})
 		elseif (type=='icon') then
-			view = xui_lable.viewType.icon()
-			view.src = icon 
-			view.style.width    = (style.iconWidth or 100)*width/100
-			view.style.height   = (style.iconHeight or 100)*height/100
+			view = xui_richText.viewType.icon()
+			view.src = v.icon or '' 
 		elseif (type=='tag') then
-			view = xui_lable.viewType.tag()
-			view.style.width = width
-			view.style.height = height 
-			view.style.backgroundColor  = backgroundColor
-			view.style['border-radius'] 	= borderRadius
-			view.style['border-color'] 		= borderColor 
-			view.style['border-width']		= borderWidth 
+			view = xui_richText.viewType.tag() 
+			view.style.backgroundColor  	= style.backgroundColor or backgroundColor
+			view.style['border-radius'] 	= style.borderRadius or borderRadius
+			view.style['border-color'] 		= (style.boredrColor or theme.borderColor) or borderColor
+			view.style['border-width']		= style.borderWidth or borderWidth 
 
 			local textView = view.subviews[1]
-			textView.value = value
-			textView.style.fontSize = fontSize
-			textView.style.color 	= textColor 
-			textView.style.lines 	= lines
+			textView.value = v.value or ''
+			textView.style.fontSize = style.fontSize or fontSize
+			textView.style.color 	= (style.textColor or theme.color) or textColor
+			textView.style.lines 	= style.lines or lines
 		end 
-
 		table.insert(o.con.subviews,view)
 	end
 
-	setmetatable(o,{__index = _lable})
+	setmetatable(o,{__index = _richText})
+	o:createView()
+	
+	local layoutView = o.layoutView
+	for k,v in ipairs(linkConfig) do
+		local onClicked = function ()
+			runtime.openURL(v.href)
+		end
+		layoutView:getSubview(v.index):setActionCallback(UI.ACTION.CLICK,onClicked)
+	end
+	
 	return o
 end
 
@@ -1400,8 +1409,8 @@ end
 
 
 ------------------------------------------------------------------
-function _layout:createLable(Base)
-	return _lable.createLayout(self,Base)
+function _layout:createRichText(Base)
+	return _richText.createLayout(self,Base)
 end
 function _layout:createPopup(Base)
 	return _popup.createLayout(self,Base)
