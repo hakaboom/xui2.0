@@ -593,7 +593,7 @@ function _button:createLayout(Base)
 
 	local value = Base.text or ''
 	local style = Base.style or {}
-	local type					 = Base.type
+	local theme					 = Base.theme
 	local disabled				 = Base.disabled or false
 	local fontSize 				 = (style.fontSize or Base.fontSize) or 18
 	local textColor 			 = (style.textColor or Base.textColor) or '#333333'
@@ -638,8 +638,8 @@ function _button:createLayout(Base)
 	}
 
 	--div
-	utils.mergeTable(o.con.style,xui_button.style.btn[type])
-	utils.mergeTable(o.con.subviews[1].style,xui_button.style.text[type])
+	utils.mergeTable(o.con.style,xui_button.style.btn[theme])
+	utils.mergeTable(o.con.subviews[1].style,xui_button.style.text[theme])
 	--text
 	utils.mergeTable(o.con.style,Base.btnStyle)
 	utils.mergeTable(o.con.subviews[1].style,Base.textStyle)

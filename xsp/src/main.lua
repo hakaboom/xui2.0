@@ -9,8 +9,8 @@ local context=mainUI:createContext()
 lable1=layout.createLayout({ui=mainUI,w=100,h=50,color='#00ffffff'}):addToParent()
 lable2=layout.createLayout({ui=mainUI,w=100,h=50,color='#00ffffff'}):addToParent()
 
-lable1:createButton({w=20,h=10,text='lable1',fontSize=12}):addToParent():setActionCallback( function() 弹窗:show() mainUI:getSaveData():save()  end)
-lable2:createButton({w=20,h=10,type='yellow',text='lable2',fontSize=12}):addToParent():setActionCallback( function() 弹窗:show() end)
+lable1:createButton({w=20,h=10,theme='blue',text='lable1',fontSize=12}):addToParent():setActionCallback( function() 弹窗:show() mainUI:getSaveData():save()  end)
+lable2:createButton({w=20,h=10,theme='yellow',text='lable2',fontSize=12}):addToParent():setActionCallback( function() 弹窗:show() end)
 lable1:setAttr('href','www.baidu.com')
 
 弹窗=popup.createLayout({ui=mainUI,direction='middle',w=50,h=50})
@@ -18,12 +18,13 @@ popup1=弹窗:getView()
 
 components={
 	{type='text',value='黄色主题',theme='yellow'},
-	{type='link',value='自定义颜色link',href='www.baidu.com',style={textColor='#546E7A'}},
+	{type='link',value='百度',href='www.baidu.com',theme='red'},
+	{type='link',value='谷歌',href='www.goole.com',theme='black'},
 	{type='text',value='自定义颜色',style={textColor='#546E7A'}},
 	{type='tag' ,value='满100减20',theme='red'},
 	{type='tag',value='自定义标签',style={textColor='#ffffff',boredrColor='#3d3d3d',backgroundColor='#546E7A'}}
 }
-richText1=popup1:createRichText({list=components,fontSize=12}):addToParent()
+richText1=lable1:createRichText({list=components,fontSize=12}):addToParent()
 -- lable2=layout.createLayout({id='lable2',ui=mainUI,w=20,h=20,color='blue'})
 -- lable3=lable2:createLayout({id='lable3',w=50,h=100,color='red'}) 
 -- lable2:addSubview(lable3)

@@ -200,7 +200,7 @@ color	C:/Users/sszz/Documents/GitHub/xui2.0/xsp/src\xui\xui.lua	571;"	e
 color	C:/Users/sszz/Documents/GitHub/xui2.0/xsp/src\xui\xui.lua	574;"	e
 color	C:/Users/sszz/Documents/GitHub/xui2.0/xsp/src\xui\xui.lua	631;"	e
 color	C:/Users/sszz/Documents/GitHub/xui2.0/xsp/src\xui\xui.lua	926;"	e
-components	C:/Users/sszz/Documents/GitHub/xui2.0/xsp/src\main.lua	20;"	e
+components	C:/Users/sszz/Documents/GitHub/xui2.0/xsp/src\main.lua	19;"	e
 con	C:/Users/sszz/Documents/GitHub/xui2.0/xsp/src\xui\xui.lua	1047;"	e
 con	C:/Users/sszz/Documents/GitHub/xui2.0/xsp/src\xui\xui.lua	1300;"	e
 con	C:/Users/sszz/Documents/GitHub/xui2.0/xsp/src\xui\xui.lua	343;"	e
@@ -601,6 +601,7 @@ textView	C:/Users/sszz/Documents/GitHub/xui2.0/xsp/src\xui\xui.lua	1210;"	e
 textView	C:/Users/sszz/Documents/GitHub/xui2.0/xsp/src\xui\xui.lua	513;"	e
 textViewStyle	C:/Users/sszz/Documents/GitHub/xui2.0/xsp/src\xui\xui.lua	1211;"	e
 theme	C:/Users/sszz/Documents/GitHub/xui2.0/xsp/src\xui\xui.lua	485;"	e
+theme	C:/Users/sszz/Documents/GitHub/xui2.0/xsp/src\xui\xui.lua	596;"	e
 titleHeight	C:/Users/sszz/Documents/GitHub/xui2.0/xsp/src\xui\xui.lua	1182;"	e
 titleHeight	C:/Users/sszz/Documents/GitHub/xui2.0/xsp/src\xui\xui.lua	1322;"	e
 titleStyle	C:/Users/sszz/Documents/GitHub/xui2.0/xsp/src\xui\xui.lua	1317;"	e
@@ -616,7 +617,6 @@ top	C:/Users/sszz/Documents/GitHub/xui2.0/xsp/src\xui\xui.lua	616;"	e
 top	C:/Users/sszz/Documents/GitHub/xui2.0/xsp/src\xui\xui.lua	742;"	e
 top	C:/Users/sszz/Documents/GitHub/xui2.0/xsp/src\xui\xui.lua	761;"	e
 type	C:/Users/sszz/Documents/GitHub/xui2.0/xsp/src\xui\xui.lua	484;"	e
-type	C:/Users/sszz/Documents/GitHub/xui2.0/xsp/src\xui\xui.lua	596;"	e
 type	C:/Users/sszz/Documents/GitHub/xui2.0/xsp/src\xui\xui.lua	915;"	e
 type	C:/Users/sszz/Documents/GitHub/xui2.0/xsp/src\xui\xui.lua	987;"	e
 utils	C:/Users/sszz/Documents/GitHub/xui2.0/xsp/src\xui\xui.lua	11;"	e
@@ -737,6 +737,5 @@ ypos	C:/Users/sszz/Documents/GitHub/xui2.0/xsp/src\xui\xui.lua	443;"	e
 ypos	C:/Users/sszz/Documents/GitHub/xui2.0/xsp/src\xui\xui.lua	584;"	e
 ypos	C:/Users/sszz/Documents/GitHub/xui2.0/xsp/src\xui\xui.lua	784;"	e
 ypos	C:/Users/sszz/Documents/GitHub/xui2.0/xsp/src\xui\xui.lua	865;"	e
-{type='link',value='自定义颜色link',href='www.baidu.com',style	C:/Users/sszz/Documents/GitHub/xui2.0/xsp/src\main.lua	22;"	e
 {type='tag',value='自定义标签',style	C:/Users/sszz/Documents/GitHub/xui2.0/xsp/src\main.lua	25;"	e
 {type='text',value='自定义颜色',style	C:/Users/sszz/Documents/GitHub/xui2.0/xsp/src\main.lua	23;"	e
