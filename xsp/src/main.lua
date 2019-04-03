@@ -18,13 +18,16 @@ popup1=弹窗:getView()
 
 components={
 	{type='text',value='黄色主题',theme='yellow'},
-	{type='link',value='百度',href='www.baidu.com',theme='red'},
-	{type='link',value='谷歌',href='www.goole.com',theme='black'},
+	{type='link',value='百度link',href='www.baidu.com',theme='red'},
+	{type='link',value='谷歌link',href='www.goole.com',theme='black'},
 	{type='text',value='自定义颜色',style={textColor='#546E7A'}},
 	{type='tag' ,value='满100减20',theme='red'},
-	{type='tag',value='自定义标签',style={textColor='#ffffff',boredrColor='#3d3d3d',backgroundColor='#546E7A'}}
+	{type='tag',value='自由行',style={textColor='#3d3d3d',boredrColor='#FFC900',backgroundColor='#FFC900',borderRadius=14,fontSize=10}},
+	{type='text',value='春秋旅游广州-泰国曼谷6天往返单机票自由行自由春秋旅游广州-泰国曼谷6天往返单机票自由行自由行…'}
 }
-richText1=lable1:createRichText({list=components,fontSize=12}):addToParent()
+richText1=lable1:createRichText({list=components,w=100,h=30,style={fontSize=12}}):addToParent()
+stepper=lable1:createStepper({w=40,h=30}):addToParent()
+
 -- lable2=layout.createLayout({id='lable2',ui=mainUI,w=20,h=20,color='blue'})
 -- lable3=lable2:createLayout({id='lable3',w=50,h=100,color='red'}) 
 -- lable2:addSubview(lable3)

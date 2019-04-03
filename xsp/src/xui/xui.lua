@@ -383,7 +383,7 @@ local xui_richText = {
 				value = '',
 				style = {
 					lines = 1,
-					margin = 5,
+					margin = 1,
 					['text-align'] = 'center',
 				},
 			}
@@ -408,7 +408,7 @@ local xui_richText = {
 						value = '',
 						style = {
 							lines = 1,
-							margin = 5,
+							margin = 1,
 							['text-align'] = 'center',
 						},
 					},
@@ -470,41 +470,44 @@ function _richText:createLayout(Base)
 			id = id,
 			view = 'div',
 			style = {
+				width = width,
+				height = height,
 				left = xpos,
 				top = ypos,
 				backgroundColor = backgroundColor,
 				['flex-direction'] = 'row',
+				['flex-wrap'] = 'wrap',
+
 			},
 			subviews = {},
 		},
 	}
-	
+
 	local linkConfig = {}
 	for k,v in pairs(list) do
 		local type  = v.type
 		local theme = xui_richText.THEME[v.theme] or {}
 		local style = v.style or {}
 		
-		if (type=='text') then
+		if 	(type=='text')     then
 			view = xui_richText.viewType.text()
 			view.value = v.value or ''
 			view.style.fontSize 	= style.fontSize or fontSize
 			view.style.color 		= (style.textColor or theme.color) or textColor
 			view.style.lines 		= style.lines or lines
-		elseif type=='link' then
+		elseif (type=='link')  then
 			view = xui_richText.viewType.text()
 			view.value = v.value or ''
 			view.style.fontSize 	= style.fontSize or fontSize
 			view.style.color 		= (style.textColor or theme.color) or textColor
 			view.style.lines 		= style.lines or lines
-			table.insert(linkConfig,{
-				index=k,href=v.href,
-			})
-		elseif (type=='icon') then
+			table.insert(linkConfig,{index = k,href = v.href})
+		elseif (type=='icon')  then
 			view = xui_richText.viewType.icon()
 			view.src = v.icon or '' 
-		elseif (type=='tag') then
+		elseif (type=='tag')   then
 			view = xui_richText.viewType.tag() 
+			view.style.height 				= style.tagHeight and (style.tagHeight/100*height)
 			view.style.backgroundColor  	= style.backgroundColor or backgroundColor
 			view.style['border-radius'] 	= style.borderRadius or borderRadius
 			view.style['border-color'] 		= (style.boredrColor or theme.borderColor) or borderColor
@@ -516,17 +519,18 @@ function _richText:createLayout(Base)
 			textView.style.color 	= (style.textColor or theme.color) or textColor
 			textView.style.lines 	= style.lines or lines
 		end 
+
 		table.insert(o.con.subviews,view)
 	end
 
-	setmetatable(o,{__index = _richText})
+	setmetatable(o, { __index = _richText })
 	o:createView()
 	
 	local layoutView = o.layoutView
 	for k,v in ipairs(linkConfig) do
 		local onClicked = function ()
 			runtime.openURL(v.href)
-		end
+		end	
 		layoutView:getSubview(v.index):setActionCallback(UI.ACTION.CLICK,onClicked)
 	end
 	
@@ -961,6 +965,28 @@ function _input:setValue(str)
 	return self
 end
 
+--[[
+local _slideNav={}
+local xui_slideNav = {
+	Count = 0,
+}
+function _slideNav:createLayout(Base)
+	local Base = Base or {}
+	local floor,parent,Base = math.floor,object:createInit('slideNav',self,Base)
+
+	local xpos   = floor((Base.xpos or 0)/100*parent.width)
+	local ypos   = floor((Base.ypos or 0)/100*parent.height)
+	local width  = floor((Base.w or 100)/100*parent.width)
+	local height = floor((Base.h or 100)/100*parent.height)
+	local context    = parent.context
+	local saveData   = parent.saveData
+	local parentView = parent.layoutView
+
+	xui_slideNav.Count = not Base.id and xui_slideNav.Count + 1
+	local id = Base.id or utils.buildID('slideNav',xui_slideNav.Count)
+end
+]]
+
 ---以下还没整
 local _stepper=class:new()
 local xui_stepper={
@@ -970,8 +996,7 @@ local xui_stepper={
 			{
 				view = 'div',
 				style = {
-					flex = 1,
-					['padding-left'] = 2,
+					borderRadius = 999,
 					['align-items'] = 'center',
 				},
 				subviews = {
@@ -986,7 +1011,6 @@ local xui_stepper={
 				view = 'input',
 				type = 'number',
 				style = {
-					flex = 2,
 					['text-align'] = 'center',
 				},
 				value = '',
@@ -996,8 +1020,7 @@ local xui_stepper={
 			{
 				view = 'div',
 				style = {
-					flex = 1,
-					['padding-right'] = 2,
+					borderRadius = 999,
 					['align-items'] = 'center',
 				},
 				subviews = {
@@ -1013,46 +1036,48 @@ local xui_stepper={
 }
 function _stepper:createLayout(Base)
 	local Base = Base or {}
-	local xpos = Base.xpos and Base.xpos/100*self.width or 0
-	local ypos = Base.ypos and Base.ypos/100*self.height or 0
-	local width = math.floor((Base.w or 100) /100*(self.width or ui.width))
-	local height = math.floor((Base.h or 100) /100*(self.height or ui.height))
+	local floor,parent,Base = math.floor,object:createInit('stepper',self,Base)
+
+	local xpos   = floor((Base.xpos or 0)/100*parent.width)
+	local ypos   = floor((Base.ypos or 0)/100*parent.height)
+	local width  = floor((Base.w or 100)/100*parent.width)
+	local height = floor((Base.h or 100)/100*parent.height)
+	local context    = parent.context
+	local saveData   = parent.saveData
+	local parentView = parent.layoutView
 	
-	local value = tonumber(Base.number) or 0
-	local step = tonumber(Base.step) or 1
-	local maximum = Base.maximum or 999
-	local minimum = Base.minimum or 0
-	local maxlength = Base.maxlength or #tostring(maximum)
+	xui_stepper.Count = not Base.id and xui_stepper.Count + 1
+	local id = Base.id or utils.buildID('stepper',xui_stepper.Count)
+
+	local value = tonumber(Base.value) or 0
+	local min   = tonumber(Base.min) or 0
+	local max   = tonumber(Base.max) or 999
+	local step  = tonumber(Base.step) or 1
+
 	local style = Base.style or {}
-	local fontSize = (style.fontSize or style['font-size']) or 18
-	local backgroundColor = (style['background-color'] or style.backgroundColor) or '#ffffff'
-	
-	local buttonStyle = style.buttonStyle or {}
-	local buttonBackgroundColor = buttonStyle.backgroundColor or '#e5e5e5'
-	local buttonFontSize = (buttonStyle.fontSize or buttonStyle['font-size']) or 20
-	
-	if not Base.id then
-		xui_stepper.Count = xui_stepper.Count + 1
-	end
-	local id = utils.buildID('stepper',(Base.id or xui_stepper.Count))
+	local backgroundColor 		= style.backgroundColor or '#fff'
+	local textColor 			= style.textColor or '#000'
+	local fontSize 				= style.fontSize or 18
+	local buttonWidth			= style.buttonWidth or height--20
+	local buttonBackgroundColor = style.buttonBackgroundColor or '3d3d3d'
 
 	local o = {
 		__tag = 'stepper',
-		context = self.context,
-		parentView = self.layoutView,
-		saveData = self.saveData,
-		config = {maximum= maximum,minimum = minimum,step = step},
+		context = context,
+		parentView = parentView,
+		saveData = saveData,
+		config = {min = min,max = max,step = step},
 		width = width,
 		height = height,
 		con = {
 			view = 'div',
 			style = {
-				['flex-start'] = 'space-between',
-				['align-items'] = 'center',
-				['flex-direction'] = 'row',
 				width = width,
 				height = height,
 				backgroundColor = backgroundColor,
+				['flex-start'] = 'center',
+				['align-items'] = 'center',
+				['flex-direction'] = 'row',
 			},
 			subviews = {},
 		},
@@ -1062,16 +1087,14 @@ function _stepper:createLayout(Base)
 	o.con.subviews = layout
 	
 	local inputView = layout[2]
-	local inputStyle = inputView.style
-	inputStyle.fontSize = fontSize
-	inputStyle.maxlength = maxlength
+	inputView.style.fontSize  = fontSize
+	inputView.style.maxlength = maxlength
 	inputView.id = id
 	inputView.value = o.saveData:get(id,value) 
 	
 	for k,v in ipairs({1,3}) do
 		local view = layout[v]
-		local viewStyle = view.style
-		viewStyle.backgroundColor = buttonBackgroundColor 
+		view.style.backgroundColor = buttonBackgroundColor 
 		
 		local textView = view.subviews[1]
 		local textStyle = textView.style
