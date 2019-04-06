@@ -8,7 +8,7 @@ local calSacle = function (x)
 	return 750 / _width * x 
 end
 
-local utils = require'xui.utils'
+local utils,floor = require'xui.utils',math.floor
 
 --[[
 	创建组件时将会继承父组件的context,layoutView,width,height.
@@ -271,6 +271,7 @@ function _rootView:createLayout(Base)
 	local rect = Base.area or Rect(0,0,_width,_height)
 	local width,height = calSacle(rect.width),calSacle(rect.height)
 	local left,top = calSacle(rect.x),calSacle(rect.y)
+	
 	local o={
 		__tag = 'root',
 		width = width,
@@ -315,7 +316,7 @@ local xui_layout = {
 }
 function _layout:createLayout(Base)
 	local Base = Base or {}
-	local floor,parent,Base = math.floor,object:createInit('layout',self,Base)
+	local parent,Base = object:createInit('layout',self,Base)
 	
 	local xpos   = floor((Base.xpos or 0)/100*parent.width)
 	local ypos   = floor((Base.ypos or 0)/100*parent.height)
@@ -435,9 +436,9 @@ local xui_richText = {
 		},
 	},
 }
-function _richText:createLayout(Base)
+function _richText:createLayout(Base) --还没整好
 	local Base = Base or {}
-	local floor,parent,Base = math.floor,object:createInit('richText',self,Base)
+	local parent,Base = object:createInit('richText',self,Base)
 
 	local xpos   = floor((Base.xpos or 0)/100*parent.width)
 	local ypos   = floor((Base.ypos or 0)/100*parent.height)
@@ -476,8 +477,7 @@ function _richText:createLayout(Base)
 				top = ypos,
 				backgroundColor = backgroundColor,
 				['flex-direction'] = 'row',
-				['flex-wrap'] = 'wrap',
-
+				['align-items'] = 'center',
 			},
 			subviews = {},
 		},
@@ -582,7 +582,7 @@ local xui_button = {
 }
 function _button:createLayout(Base)
 	local Base = Base or {}
-	local floor,parent,Base = math.floor,object:createInit('button',self,Base)
+	local parent,Base = object:createInit('button',self,Base)
 
 	local xpos   = floor((Base.xpos or 0)/100*parent.width)
 	local ypos   = floor((Base.ypos or 0)/100*parent.height)
@@ -683,7 +683,7 @@ local xui_overlay = {
 }
 function _overlay:createLayout(Base) --overlay会在创建时将view设置回调并添加进root组件中,如果不设置回调可能会导致无法点击,需调用hidden
 	local Base = Base or {}
-	local floor,parent,Base = math.floor,object:createInit('overlay',self,Base)
+	local parent,Base = object:createInit('overlay',self,Base)
 	
 	local context  = parent.context
 	local saveData = parent.saveData
@@ -863,7 +863,7 @@ local xui_input = {
 }
 function _input:createLayout(Base)
 	local Base = Base or {}
-	local floor,parent,Base = math.floor,object:createInit('input',self,Base)
+	local parent,Base = object:createInit('input',self,Base)
 
 	local xpos   = floor((Base.xpos or 0)/100*parent.width)
 	local ypos   = floor((Base.ypos or 0)/100*parent.height)
@@ -1036,7 +1036,7 @@ local xui_stepper={
 }
 function _stepper:createLayout(Base)
 	local Base = Base or {}
-	local floor,parent,Base = math.floor,object:createInit('stepper',self,Base)
+	local parent,Base = object:createInit('stepper',self,Base)
 
 	local xpos   = floor((Base.xpos or 0)/100*parent.width)
 	local ypos   = floor((Base.ypos or 0)/100*parent.height)
