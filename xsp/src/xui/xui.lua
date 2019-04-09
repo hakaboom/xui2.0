@@ -873,7 +873,7 @@ function _input:createLayout(Base)
 	local saveData   = parent.saveData
 	local parentView = parent.layoutView
 
-	xui_input.Count = not Base.id and xui_input.Count +1
+	xui_input.Count = not Base.id and xui_input.Count + 1
 	local id = Base.id or utils.buildID('input',xui_input.Count)
 
 	local o = {
@@ -985,9 +985,9 @@ function _slideNav:createLayout(Base)
 	xui_slideNav.Count = not Base.id and xui_slideNav.Count + 1
 	local id = Base.id or utils.buildID('slideNav',xui_slideNav.Count)
 end
-]]
 
----以下还没整
+
+
 local _stepper=class:new()
 local xui_stepper={
 	Count = 0,
@@ -1137,8 +1137,9 @@ function _stepper:setActionCallback(callback)
 	reduceView:setActionCallback(UI.ACTION.CLICK, onReduce)
 	return self
 end
+]]
 
-
+---以下还没整
 local _tabPage = class:new()
 local xui_tabPage = {
 	Count=0,
@@ -1285,18 +1286,15 @@ function _tabPage:buildTab(list,style)
 
 	for i=1, #list do
 		local value = list[i].value
-		local style = list[i].style or {}
 		local tabView = _layout:createLayout({ui=self,id=utils.buildID(self.con.id..'_tab',value)})
 			tabView:setStyle({
 				width=width,
 				height=height,
-				backgroundColor = style.backgroundColor or backgroundColor,
+				backgroundColor = backgroundColor,
 			})
 			
-		if type(list[i].tabStyle) =='table' then
-			tabView:setStyle(list[i].tabStyle)
-		end
-			
+		tabView:setStyle(list[i].tabStyle)
+
 		self.config.pages[i] = tabView
 		o.subviews[1].subviews[i] = tabView:getView()
 	end
@@ -1305,24 +1303,30 @@ function _tabPage:buildTab(list,style)
 end
 function _tabPage:createLayout(Base)
 	local Base = Base or {}
-	local xpos = Base.xpos and Base.xpos/100*self.width or 0
-	local ypos = Base.ypos and Base.ypos/100*self.height or 0
-	local layoutSort = Base.sort=='row' and 'row' or 'column'
-	local width = math.floor((Base.w or 100) /100*(self.width or ui.width))
-	local height = math.floor((Base.h or 100) /100*(self.height or ui.height))
-	if not Base.id then
-		xui_tabPage.Count = xui_tabPage.Count + 1
-	end
+	local parent,Base = object:createInit('tabPage',self,Base)
+
+	local xpos   = floor((Base.xpos or 0)/100*parent.width)
+	local ypos   = floor((Base.ypos or 0)/100*parent.height)
+	local width  = floor((Base.w or 100)/100*parent.width)
+	local height = floor((Base.h or 100)/100*parent.height)
+	local context    = parent.context
+	local saveData   = parent.saveData
+	local parentView = parent.layoutView
+	
+	xui_tabPage.Count = not Base.id and xui_tabPage.Count + 1
+	local id = Base.id or utils.buildID('tabPage',xui_tabPage.Count)	
+	local flexDirection = Base.sort=='row' and 'row' or 'column'
 	
 	local o={
 		__tag = 'tabPage',
-		context = self.context,
-		parentView = self.layoutView,
+		context = context,
+		parentView = parentView,
+		saveData = saveData,
 		width = width,
 		height = height,
 		config = {pages={}},
 		con = {
-			id = utils.buildID('tabPage',(Base.id or xui_tabPage.Count)),
+			id = id,
 			view = 'div',
 			style = {
 				width = width,
@@ -1330,16 +1334,16 @@ function _tabPage:createLayout(Base)
 				left = xpos,
 				top = ypos,
 				backgroundColor = Base.Color or '#ffffff',
-				['flex-direction'] = layoutSort,
+				['flex-direction'] = flexDirection,
 			},
 			subviews = {
 			},
 		},
 	}
 
-	local list = Base.list or {}
+	local list       = Base.list or {}
 	local titleStyle = Base.titleStyle or {}
-	local tabStyle = Base.tabStyle or {}
+	local tabStyle   = Base.tabStyle or {}
 
 	local titleView = _tabPage.buildTitle(o,list,titleStyle)
 	local titleWidth = titleView.style.width
@@ -1347,8 +1351,8 @@ function _tabPage:createLayout(Base)
 	o.con.subviews[1] = titleView
 	
 	
-	tabStyle.width = tabStyle.width or (layoutSort == 'column' and titleWidth or (width-titleWidth) )
-	tabStyle.height = tabStyle.height or (layoutSort == 'column' and (height-titleHeight) or titleHeight )
+	tabStyle.width  = tabStyle.width  or (flexDirection == 'column' and titleWidth or (width-titleWidth) )
+	tabStyle.height = tabStyle.height or (flexDirection == 'column' and (height-titleHeight) or titleHeight )
 	local tabView = _tabPage.buildTab(o,list,tabStyle)
 	o.con.subviews[2] = tabView
 	o.tabWidth = tabStyle.width

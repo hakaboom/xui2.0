@@ -23,37 +23,20 @@ components={
 	{type='text',value='自定义颜色',style={textColor='#546E7A'}},
 	{type='tag' ,value='满100减20',theme='red'},
 	{type='tag',value='自由行',style={textColor='#3d3d3d',boredrColor='#FFC900',backgroundColor='#FFC900',borderRadius=14}},
---	{type='text',value='春秋旅游广州-泰国曼谷6天往返单机票自由行自由春秋旅游广州-泰国曼谷6天往返单机票自由行自由行…',style={lines=3}}
 }
 richText1=lable1:createRichText({list=components,w=60,h=30,style={fontSize=12}}):addToParent()
-stepper=lable1:createStepper({w=40,h=30}):addToParent()
 
--- lable2=layout.createLayout({id='lable2',ui=mainUI,w=20,h=20,color='blue'})
--- lable3=lable2:createLayout({id='lable3',w=50,h=100,color='red'}) 
--- lable2:addSubview(lable3)
--- lable:addSubview(lable2)
-
---d=lable:createPopup()
 a=lable2:createTabPage({
 	list={
-		{value='1',style={backgroundColor='red'}},{value='2',style={backgroundColor='yellow'}},
-		{value='3',style={backgroundColor='blue'}},{value='4',style={backgroundColor='#fff'}},
+		{value='1',tabStyle={backgroundColor='red'}},{value='2',tabStyle={backgroundColor='yellow'}},
+		{value='3',tabStyle={backgroundColor='blue'}},{value='4',tabStyle={backgroundColor='#fff'}},
 		{value='5'},{value='6'},
 		{value='7'},{value='8'},
 	},
 	tabStyle = {
 		backgroundColor = 'black'
 	},
-}):addToParent():setActionCallback(function(Base) print(Base.layoutView) end)
-
-
-
---title=layout:createLayout({ui=ui,w=100,h=10,sort='row',Color='blue'}):addToRootView()
-----b=title:createStepper({w=20,number=11,maximum=13,step=2}):addToParent():setActionCallback(function()print(1) end)
-----c=title:createInput({w=40,prompt="start"}):addToParent():setActionCallback()
---d:setValue('asdsada')
---f=page1:createPopup({w=20,h=100,direction='left'}):show()
---e=overlay:createLayout({ui=ui,w=50,h=50}):addToRootView():setActionCallback():show()
+}):addToParent():setActionCallback(function(Base) print(Base.layoutView) Print(Base.layoutView:getStyles()) end)
 
 mainUI:show()
 while show do
