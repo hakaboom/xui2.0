@@ -1285,11 +1285,12 @@ function _tabPage:buildTab(list,style)
 
 	for i=1, #list do
 		local value = list[i].value
+		local style = list[i].style or {}
 		local tabView = _layout:createLayout({ui=self,id=utils.buildID(self.con.id..'_tab',value)})
 			tabView:setStyle({
 				width=width,
 				height=height,
-				backgroundColor = backgroundColor,
+				backgroundColor = style.backgroundColor or backgroundColor,
 			})
 			
 		if type(list[i].tabStyle) =='table' then

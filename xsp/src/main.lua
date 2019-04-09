@@ -34,20 +34,17 @@ stepper=lable1:createStepper({w=40,h=30}):addToParent()
 -- lable:addSubview(lable2)
 
 --d=lable:createPopup()
---a=page1:createTabPage({
---	list={
---		{value='1'},{value='2'},
---		{value='3'},{value='4'},
---		{value='5'},{value='6'},
---		{value='7'},{value='8'},
---	},
---	titleStyle = {
---		w=20,h=20
---	},
---	tabStyle = {
---		backgroundColor = 'black'
---	},
---}):addToParent():setActionCallback(function(Base) print(Base.layoutView) end)
+a=lable2:createTabPage({
+	list={
+		{value='1',style={backgroundColor='red'}},{value='2',style={backgroundColor='yellow'}},
+		{value='3',style={backgroundColor='blue'}},{value='4',style={backgroundColor='#fff'}},
+		{value='5'},{value='6'},
+		{value='7'},{value='8'},
+	},
+	tabStyle = {
+		backgroundColor = 'black'
+	},
+}):addToParent():setActionCallback(function(Base) print(Base.layoutView) end)
 
 
 
