@@ -88,6 +88,17 @@ end
 function object:ifViewAdded(id,viewID)
 	printf('component(ID:%s) have been added to (ID:%s)',id,viewID)
 end
+function object:copyInherit(t)
+	local context    = t.context
+	local saveData   = t.saveData
+	local layoutView = t.parentView
+	local width 	 = t.width
+	local height     = t.height
+	return {
+		context = context,saveData = saveData,layoutView = layoutView,
+		width = width,height = height,
+	}
+end
 
 
 local class = {}
@@ -325,8 +336,8 @@ function _layout:createLayout(Base)
 	local context    = parent.context
 	local saveData   = parent.saveData
 	local parentView = parent.layoutView
-	
-	xui_layout.Count = not Base.id and xui_layout.Count +1
+
+	xui_layout.Count = not Base.id and xui_layout.Count + 1 or xui_layout.Count
 	local id = Base.id or utils.buildID('layout',xui_layout.Count)
 	
 	local backgroundColor = Base.color or '#ffffff'
@@ -965,7 +976,7 @@ function _input:setValue(str)
 	return self
 end
 
---[[
+--[[ 这俩再说吧
 local _slideNav={}
 local xui_slideNav = {
 	Count = 0,
@@ -1139,7 +1150,6 @@ function _stepper:setActionCallback(callback)
 end
 ]]
 
----以下还没整
 local _tabPage = class:new()
 local xui_tabPage = {
 	Count=0,
@@ -1189,7 +1199,7 @@ local xui_tabPage = {
 		return str
 	end,
 } 
-function _tabPage:buildTitle(list,style)
+function _tabPage:buildTitle(list,style,layoutSort)
 	local o={
 		view = 'scroller',
 		style = {},
@@ -1198,10 +1208,11 @@ function _tabPage:buildTitle(list,style)
 	
 	local list = list or {}
 	local style = style or {}
-	local layoutSort = self.con.style['flex-direction']
-	local width  =	math.floor(layoutSort =='column' and self.width or self.width*(style.w or 12)/100)
-	local height =	math.floor(layoutSort =='column' and self.height*(style.h or 15)/100 or self.height)
-	
+	local layoutSort = layoutSort 
+
+	local width  =	floor(layoutSort =='column' and self.width or self.width*(style.w or 12)/100)
+	local height =	floor(layoutSort =='column' and self.height*(style.h or 15)/100 or self.height)
+
 	local titleWidth  = layoutSort =='column' and width*(style.titleWidth or 15)/100 or width
 	local titleHeight = layoutSort =='column' and height or height*(style.titleHeight or 15)/100 
 	local fontSize = (style.fontSize or style['font-size']) or 15
@@ -1215,10 +1226,10 @@ function _tabPage:buildTitle(list,style)
 	o.style={
 		width = width,
 		['max-height'] = height,
-		['flex-direction'] = layoutSort=='column' and 'row' or 'column',
+		['flex-direction']   = layoutSort=='column' and 'row' or 'column',
 	}
 	o['scroll-direction'] = o.style['flex-direction']=='column' and 'vertical' or 'horizontal'
-	
+
 	local subviews = o.subviews
 	for i=1, #list do
 		local value = list[i].value or ''
@@ -1269,7 +1280,7 @@ function _tabPage:buildTab(list,style)
 					['flex-direction'] = 'row',
 				},
 				subviews = {},
-			},
+			}
 		},
 	}
 	
@@ -1284,15 +1295,17 @@ function _tabPage:buildTab(list,style)
 	o.subviews[1].style.width = width*#list
 	o.subviews[1].style.height = height
 
+	local parentUI = object:copyInherit(self)
+	parentUI.width = width
+	parentUI.height = height
+
 	for i=1, #list do
 		local value = list[i].value
-		local tabView = _layout:createLayout({ui=self,id=utils.buildID(self.con.id..'_tab',value)})
+		local id = utils.buildID(self.con.id..'_tab',value)
+		local tabView = _layout:createLayout({ui=parentUI,id=id})
 			tabView:setStyle({
-				width=width,
-				height=height,
 				backgroundColor = backgroundColor,
 			})
-			
 		tabView:setStyle(list[i].tabStyle)
 
 		self.config.pages[i] = tabView
@@ -1302,6 +1315,7 @@ function _tabPage:buildTab(list,style)
 	return o
 end
 function _tabPage:createLayout(Base)
+	--reverse = true
 	local Base = Base or {}
 	local parent,Base = object:createInit('tabPage',self,Base)
 
@@ -1312,11 +1326,11 @@ function _tabPage:createLayout(Base)
 	local context    = parent.context
 	local saveData   = parent.saveData
 	local parentView = parent.layoutView
-	
+
 	xui_tabPage.Count = not Base.id and xui_tabPage.Count + 1
 	local id = Base.id or utils.buildID('tabPage',xui_tabPage.Count)	
 	local flexDirection = Base.sort=='row' and 'row' or 'column'
-	
+
 	local o={
 		__tag = 'tabPage',
 		context = context,
@@ -1329,12 +1343,12 @@ function _tabPage:createLayout(Base)
 			id = id,
 			view = 'div',
 			style = {
-				width = width,
+				width  = width,
 				height = height,
 				left = xpos,
-				top = ypos,
+				top  = ypos,
 				backgroundColor = Base.Color or '#ffffff',
-				['flex-direction'] = flexDirection,
+				['flex-direction'] = Base.reverse and flexDirection..'-reverse' or flexDirection,
 			},
 			subviews = {
 			},
@@ -1345,18 +1359,18 @@ function _tabPage:createLayout(Base)
 	local titleStyle = Base.titleStyle or {}
 	local tabStyle   = Base.tabStyle or {}
 
-	local titleView = _tabPage.buildTitle(o,list,titleStyle)
+	local titleView = _tabPage.buildTitle(o,list,titleStyle,flexDirection)
 	local titleWidth = titleView.style.width
 	local titleHeight = titleView.style['max-height']
-	o.con.subviews[1] = titleView
-	
 	
 	tabStyle.width  = tabStyle.width  or (flexDirection == 'column' and titleWidth or (width-titleWidth) )
 	tabStyle.height = tabStyle.height or (flexDirection == 'column' and (height-titleHeight) or titleHeight )
 	local tabView = _tabPage.buildTab(o,list,tabStyle)
-	o.con.subviews[2] = tabView
 	o.tabWidth = tabStyle.width
 	o.tabHeight = tabStyle.height
+
+	o.con.subviews[1] = titleView
+	o.con.subviews[2] = tabView
 
 	setmetatable(o,{__index = _tabPage,__tostring = xui_tabPage.toString})
 	return o
@@ -1379,10 +1393,11 @@ end
 function _tabPage:setActionCallback(callback)
 	local view = self.layoutView
 	local config = self.config
+	local selectView = view:getSubview(1)
+	local tabView = view:getSubview(2):getSubview(1)		
 
 	local onClicked = function(id,action)
 		if id~=config.checkedIndex then
-			local selectView = view:getSubview(1)
 			local color = config[id].color
 			--checked 
 			local subview = selectView:getSubview(config[id].index)
@@ -1403,7 +1418,6 @@ function _tabPage:setActionCallback(callback)
 
 			config.checkedIndex = id
 			
-			local tabView = view:getSubview(2):getSubview(1)
 			tabView:setStyle('left',(config[id].index-1)*(-1 *self.tabWidth))
 		end
 		
@@ -1414,7 +1428,6 @@ function _tabPage:setActionCallback(callback)
 		end
 	end
 	
-	local selectView = view:getSubview(1)
 	local subviewsCount = selectView:subviewsCount()
 	for i = 1, subviewsCount do
 		local subview = selectView:getSubview(i)
@@ -1435,7 +1448,7 @@ function _tabPage:getPage(index)
 	end
 end
 
-
+local 
 ------------------------------------------------------------------
 function _layout:createRichText(Base)
 	return _richText.createLayout(self,Base)
