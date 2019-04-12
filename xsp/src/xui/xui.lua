@@ -160,12 +160,18 @@ function class:getID()
 	end
 	return self.con.id
 end
-function class:getStyle()
+function class:getStyles(index)
+	local styles
 	if self.layoutView then
-		return self.layoutView:getStyles()
+		styles = self.layoutView:getStyles()
 	else
-		return self.con.style
+		styles = self.con.style
 	end
+
+	if index then
+		return styles[index]
+	end
+	return styles
 end
 function class:getView()
 	if self.layoutView then
@@ -264,6 +270,28 @@ function _storage:put(id,value)
 end
 function _storage:get(id,defValue)
 	return (self.data[id] or defValue)
+end
+function _storage:encodePut(id,value)
+	local t = {}
+	for k,v in pairs(value) do
+		if v then
+			t[#t+1] = k
+		end
+	end
+	local str = table.concat(t,'@')
+	self.data[id] = str
+end
+function _storage:decodeGet(id,defValue)
+	local value = self.data[id]
+	Print(value)
+	if value then
+		local t = {}
+		for k,v in pairs(utils.split(value,'@')) do
+			t[v] = true
+		end
+		return t
+	end
+	return defValue
 end
 function _storage:save()
 	local cjson = require'cjson'
@@ -674,9 +702,11 @@ function _button:setActionCallback(callback)
 			callback(self)
 		end
 	end
-	
-	view:setActionCallback(UI.ACTION.CLICK, onClicked)
-	view:setActionCallback(UI.ACTION.LONG_PRESS, onClicked)
+
+	if not self.disabled then
+		view:setActionCallback(UI.ACTION.CLICK, onClicked)
+		view:setActionCallback(UI.ACTION.LONG_PRESS, onClicked)
+	end
 	return self
 end
 function _button:setValue(str)
@@ -976,179 +1006,6 @@ function _input:setValue(str)
 	return self
 end
 
---[[ 这俩再说吧
-local _slideNav={}
-local xui_slideNav = {
-	Count = 0,
-}
-function _slideNav:createLayout(Base)
-	local Base = Base or {}
-	local floor,parent,Base = math.floor,object:createInit('slideNav',self,Base)
-
-	local xpos   = floor((Base.xpos or 0)/100*parent.width)
-	local ypos   = floor((Base.ypos or 0)/100*parent.height)
-	local width  = floor((Base.w or 100)/100*parent.width)
-	local height = floor((Base.h or 100)/100*parent.height)
-	local context    = parent.context
-	local saveData   = parent.saveData
-	local parentView = parent.layoutView
-
-	xui_slideNav.Count = not Base.id and xui_slideNav.Count + 1
-	local id = Base.id or utils.buildID('slideNav',xui_slideNav.Count)
-end
-
-
-
-local _stepper=class:new()
-local xui_stepper={
-	Count = 0,
-	layout = function ()
-		return {
-			{
-				view = 'div',
-				style = {
-					borderRadius = 999,
-					['align-items'] = 'center',
-				},
-				subviews = {
-					{
-						view = 'text',
-						value = '-',
-						style = {},
-					},
-				},
-			},
-			{
-				view = 'input',
-				type = 'number',
-				style = {
-					['text-align'] = 'center',
-				},
-				value = '',
-				singleline = true,
-				disabled = true,
-			},
-			{
-				view = 'div',
-				style = {
-					borderRadius = 999,
-					['align-items'] = 'center',
-				},
-				subviews = {
-					{
-						view = 'text',
-						value = '+',
-						style = {},
-					},					
-				},
-			},
-		}
-	end
-}
-function _stepper:createLayout(Base)
-	local Base = Base or {}
-	local parent,Base = object:createInit('stepper',self,Base)
-
-	local xpos   = floor((Base.xpos or 0)/100*parent.width)
-	local ypos   = floor((Base.ypos or 0)/100*parent.height)
-	local width  = floor((Base.w or 100)/100*parent.width)
-	local height = floor((Base.h or 100)/100*parent.height)
-	local context    = parent.context
-	local saveData   = parent.saveData
-	local parentView = parent.layoutView
-	
-	xui_stepper.Count = not Base.id and xui_stepper.Count + 1
-	local id = Base.id or utils.buildID('stepper',xui_stepper.Count)
-
-	local value = tonumber(Base.value) or 0
-	local min   = tonumber(Base.min) or 0
-	local max   = tonumber(Base.max) or 999
-	local step  = tonumber(Base.step) or 1
-
-	local style = Base.style or {}
-	local backgroundColor 		= style.backgroundColor or '#fff'
-	local textColor 			= style.textColor or '#000'
-	local fontSize 				= style.fontSize or 18
-	local buttonWidth			= style.buttonWidth or height--20
-	local buttonBackgroundColor = style.buttonBackgroundColor or '3d3d3d'
-
-	local o = {
-		__tag = 'stepper',
-		context = context,
-		parentView = parentView,
-		saveData = saveData,
-		config = {min = min,max = max,step = step},
-		width = width,
-		height = height,
-		con = {
-			view = 'div',
-			style = {
-				width = width,
-				height = height,
-				backgroundColor = backgroundColor,
-				['flex-start'] = 'center',
-				['align-items'] = 'center',
-				['flex-direction'] = 'row',
-			},
-			subviews = {},
-		},
-	}
-
-	local layout = xui_stepper.layout()
-	o.con.subviews = layout
-	
-	local inputView = layout[2]
-	inputView.style.fontSize  = fontSize
-	inputView.style.maxlength = maxlength
-	inputView.id = id
-	inputView.value = o.saveData:get(id,value) 
-	
-	for k,v in ipairs({1,3}) do
-		local view = layout[v]
-		view.style.backgroundColor = buttonBackgroundColor 
-		
-		local textView = view.subviews[1]
-		local textStyle = textView.style
-		textStyle.fontSize = buttonFontSize
-	end
-
-	setmetatable(o,{__index = _stepper})
-	return o
-end
-function _stepper:setActionCallback(callback)
-	local view = self.layoutView
-	local addView = view:getSubview(3)
-	local textView = view:getSubview(2)
-	local reduceView = view:getSubview(1)
-	
-	local saveData = self.saveData
-	local maximum = self.config.maximum
-	local minimum = self.config.minimum
-	local step = self.config.step
-	
-	local onAdd = function ()
-		local num = tonumber(textView:getAttr('value'))
-		if num+step <= maximum then
-			textView:setAttr('value',num+step)
-		end
-	end
-	local onReduce = function ()
-		local num = tonumber(textView:getAttr('value'))
-		if num-step >= minimum then
-			textView:setAttr('value',num-step)	
-		end
-	end
-	local onINPUT = function (id)
-		local value = textView:getAttr('value')
-		saveData:put(id,value)
-	end
-
-	textView:setActionCallback(UI.ACTION.INPUT, onINPUT)
-	addView:setActionCallback(UI.ACTION.CLICK, onAdd)
-	reduceView:setActionCallback(UI.ACTION.CLICK, onReduce)
-	return self
-end
-]]
 
 local _tabPage = class:new()
 local xui_tabPage = {
@@ -1315,7 +1172,6 @@ function _tabPage:buildTab(list,style)
 	return o
 end
 function _tabPage:createLayout(Base)
-	--reverse = true
 	local Base = Base or {}
 	local parent,Base = object:createInit('tabPage',self,Base)
 
@@ -1347,11 +1203,10 @@ function _tabPage:createLayout(Base)
 				height = height,
 				left = xpos,
 				top  = ypos,
-				backgroundColor = Base.Color or '#ffffff',
+				backgroundColor = Base.color or '#ffffff',
 				['flex-direction'] = Base.reverse and flexDirection..'-reverse' or flexDirection,
 			},
-			subviews = {
-			},
+			subviews = {},
 		},
 	}
 
@@ -1448,8 +1303,219 @@ function _tabPage:getPage(index)
 	end
 end
 
-local 
+
+local _gridSelect = class:new()
+local xui_gridSelect = {
+	Count = 0,
+	layout = function ()
+		return {
+		--  id = nil,
+			view = 'div',
+			style = {
+				['justify-content'] = 'center',
+			},
+			subviews = {
+				{
+					view = 'text',
+					style = {},
+					value = '',
+				}
+			},
+		}
+	end,
+	style = {
+		theme = {
+			['yellow'] = {
+				textColor = '#333333',
+				checkedTextColor = '#ffffff',
+				disableTextColor = '#eeeeee',
+				borderColor = '#000000',
+				checkedBorderColor = '#ffb200',
+				backgroundColor = '#ffffff',
+				checkedBackgroundColor = '#ffb200',
+			},
+		},
+		text = {
+			['text-overflow'] = 'ellipsis',
+			['text-align'] = 'center',
+		},
+	},
+}
+function  _gridSelect:createLayout(Base)
+	local Base = Base or {}
+	local parent,Base = object:createInit('gridSelect',self,Base)
+
+	local xpos   = floor((Base.xpos or 0)/100*parent.width)
+	local ypos   = floor((Base.ypos or 0)/100*parent.height)
+	local width  = floor((Base.w or 100)/100*parent.width)
+	local height = floor((Base.h or 100)/100*parent.height)
+	local context    = parent.context
+	local saveData   = parent.saveData
+	local parentView = parent.layoutView
+
+	xui_tabPage.Count = not Base.id and xui_tabPage.Count + 1
+	local id = Base.id or utils.buildID('gridSelect',xui_gridSelect.Count)	
+
+	local o = {
+		__tag = 'gridSelect',
+		context = context,
+		parentView = parentView,
+		saveData = saveData,
+		width = width,
+		height = height,
+		con = {
+			id = id,
+			view = 'div',
+			style = {
+				width = width,
+				heigth = height,
+				left = xpos,
+				top = ypos,
+				backgroundColor = Base.color or '#ffffff',
+				['flex-direction'] = 'row',
+				['justify-content'] = 'space-between',
+				['flex-wrap'] = 'wrap',
+			},
+			subviews = {},
+		}
+	}
+
+	local list  = Base.list or {}
+	local style = Base.style or {}
+	local limit = Base.limit or 999
+
+	---style
+	local theme = Base.theme and xui_gridSelect.style.theme[Base.theme] or {}
+	local textColor 			 = (style.textColor or theme.textColor) or '#333'
+	local disableTextColor 		 = (style.disableTextColor or theme.disableTextColor) or '#9b9b9b'
+	local checkedTextColor 		 = (style.checkedTextColor or theme.checkedTextColor) or '#333'
+	local backgroundColor 		 = (style.backgroundColor or theme.backgroundColor) or '#fff'
+	local checkedBackgroundColor = (style.checkedBackgroundColor or theme.checkedBackgroundColor) or '#fff'
+	local disabledBackgroundColor = style.disableBackgroundColor or '#f6f6f6'
+	local fontSize 				 = style.fontSize or 18
+	local borderWidth 			 = style.borderWidth or 1
+	local borderRadius 			 = style.borderRadius or 5 
+	local borderColor 			 = (style.borderColor or theme.borderColor)  or '#000'
+	local disabledBorderColor    = style.disabledBorderColor or 'transparent'
+	local checkedBorderColor     = (style.checkedBorderColor or theme.checkedBorderColor) or '#000'
+	--list 
+	local listCount = #list --选项数量
+	local lineSpacing = (style.lineSpacing or 1)/100*width --行间隔
+	local selectWidth  = (style.selectWidth or 20)/100*width
+	local selectHeight = (style.selectHeight or 20)/100*height
+	local linesCount =  floor(width/selectWidth) --每行数量
+	xui_gridSelect[id] = {
+		textColor = textColor , disabledTextColor = disableTextColor, checkedTextColor = checkedTextColor,
+		backgroundColor = backgroundColor , checkedBackgroundColor =checkedBackgroundColor , disabledBackgroundColor = disabledBackgroundColor,
+		borderColor = borderColor , disabledBorderColor = disabledBorderColor , checkedBorderColor = checkedBorderColor,
+		limit = limit , config = {}
+	}
+	local saveConfig = saveData:decodeGet(id) or {}
+	local checkedCount = 0
+	for k,v in pairs(list) do
+		local config = {}
+		local view = xui_gridSelect.layout()
+		local value = v.value
+		local checked  = saveConfig[value] or  v.checked
+		local disabled = v.disabled
+		if checked then
+			checkedCount = checkedCount + 1
+		end
+
+		local selectID = utils.buildID(id..'_select',value)
+		view.id = selectID
+		view.style.width = selectWidth
+		view.style.height = selectHeight
+		view.style.backgroundColor = disabled and disabledBackgroundColor or (checked and checkedBackgroundColor or backgroundColor)
+		view.style.borderWidth  = borderWidth
+		view.style.borderColor  = disabled and disabledBorderColor or (checked and checkedBorderColor or borderColor) 
+		view.style.borderRadius = borderRadius
+		view.style['margin-top'] = k > linesCount and lineSpacing or 0
+
+		local textView = view.subviews[1]
+		textView.value = value
+		utils.mergeTable(textView.style,xui_gridSelect.style.text)
+		textView.style.color = disabled and disabledTextColor or (checked and checkedTextColor or textColor)
+		textView.style.fontSize = fontSize
+
+		table.insert(o.con.subviews,view)
+		xui_gridSelect[id].config[selectID] = { index = k ,checked = checked, disabled = disabled, value = value	}
+	end
+
+	-- 填充空白
+	local addeds = listCount % linesCount
+	local len = (addeds~=0 and linesCount<=listCount) and (linesCount-addeds) or 0
+	for i =1,len do
+		local view = xui_gridSelect.layout()
+		view.style.width = selectWidth
+		view.style['margin-top'] = lineSpacing
+		view.style.opacity = 0
+		table.insert(o.con.subviews,view)
+	end
+
+	setmetatable(o,{__index = _gridSelect})
+	return o
+end
+function _gridSelect:setActionCallback(callback)
+	local view = self.layoutView
+	local saveData = self.saveData
+	local data = xui_gridSelect[self.con.id]
+	local config = data.config
+
+	local onClicked = function (id,action)
+		local checkedConfig = config[id]
+		local checkedView = view:getSubview(checkedConfig.index)
+		local saveConfig = {}
+
+		--upCheckCount
+		local upCheckCount = 0
+		for k,v in pairs(config) do
+			if v.checked then
+				saveConfig[v.value] = true
+				upCheckCount = upCheckCount + 1
+			end
+		end
+
+		if not checkedConfig.disabled then
+			if checkedConfig.checked then
+				textColor = data.textColor
+				borderColor = data.borderColor
+				backgroundColor = data.backgroundColor
+				upCheckCount = upCheckCount - 1
+			else
+				if upCheckCount >= data.limit then
+					checkedConfig.checked = not checkedConfig.checked
+				else
+					borderColor = data.checkedBorderColor
+					textColor = data.checkedTextColor
+					backgroundColor = data.checkedBackgroundColor
+					upCheckCount = upCheckCount + 1
+				end
+			end
+			checkedView:setStyle({
+				borderColor = borderColor,
+				backgroundColor = backgroundColor,
+			})
+			checkedView:getSubview(1):setStyle({color = textColor})
+		end
+
+		checkedConfig.checked = not checkedConfig.checked
+		saveConfig[checkedConfig.value] = checkedConfig.checked and true
+		saveData:encodePut(self.con.id,saveConfig)
+		if callback then
+			callback()
+		end
+	end
+
+	local subviewsCount = view:subviewsCount()
+	for i =1,subviewsCount do
+		view:getSubview(i):setActionCallback(UI.ACTION.CLICK,onClicked)
+	end
+end
 ------------------------------------------------------------------
+function _layout:createGridSelect(Base)
+	return _gridSelect.createLayout(self,Base)
+end
 function _layout:createRichText(Base)
 	return _richText.createLayout(self,Base)
 end
