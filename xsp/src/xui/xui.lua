@@ -75,7 +75,6 @@ local utils,floor = require'xui.utils',math.floor
 	__tag   组件的类型表示
 	context 		rootView中继承的UIContext属性
 	parentView 		父组件
-
 ]]
 --[[
 	API说明
@@ -216,9 +215,9 @@ local utils,floor = require'xui.utils',math.floor
 
 	layout同时继承class的所有属性
 
-	-------------------------------------------------------------lable
+	-------------------------------------------------------------label
 	构建标签组件
-	lable1 = lable.createLayout(Base)
+	label1 = label.createLayout(Base)
 	参数说明:
 		Base = {
 			id='组件2'		控件的id,如设置,则需要唯一 								缺省时自动填充
@@ -226,18 +225,23 @@ local utils,floor = require'xui.utils',math.floor
 			h=100			控件占用父控件的高比例 (h>0)								缺省时为100
 			xpos=0			控件在父控件中左上角顶点x轴的偏移值   						缺省时为0
 			ypos=0			控件在父控件中左上角顶点y轴的偏移值   						缺省时为0
-			type='text'		lable组件的类型可选:'text','image' 						缺省时为'text'
+			type='text'		label组件的类型可选:'text','image' 						缺省时为'text'
 			text='ttttt'    如type为'text'则填入 									缺省时为''
 			image='src = 'xsp://logo.png''											缺省时为''
 			style={
 				fontSize=20  text的字体大小											缺省时为10
-				textColor    text的字体颜色 											缺省时为'#333333'
+				textColor    text的字体颜色 											缺省时为'#000000'
 			}
 			--------------------------
 			ui 				可选值,指定父组件 
 		}
 
-	lable同时继承class的所有属性
+	设置字体style属性
+	label1:setLabelStyle(...)
+	函数说明:
+		参数同UIView:setStyle(),这边将引用指向text或image控件上
+
+	label同时继承class的所有属性
 
 	-------------------------------------------------------------button
 	构建按钮组件
@@ -311,6 +315,7 @@ local utils,floor = require'xui.utils',math.floor
 			direction='middle'  弹窗在root中弹出的位置:'middle','bottom','right','top','left'		缺省时为'middle'
 			--------------------------
 			ui 				可选值,指定父组件			
+			overlayStyle = {}   设置蒙层的style属性
 		}	
 	函数说明:
 		弹窗控件将会创建一个蒙层组件,并添加一个layout组件。
@@ -475,6 +480,49 @@ local utils,floor = require'xui.utils',math.floor
 	函数说明:
 		选中的配置可以通过调用self.saveData查看
 ]]
+--[[
+	Special API
+	-------------------------------------------------------------diaLog	
+	提示框控件
+	diaLog1 = diaLog.createLayout(Base)
+	参数说明: -- 待补充
+		Base = {
+			id='组件1'					控件的id,如设置,则需要唯一 								缺省时自动填充
+			w=100						控件占用root控件的宽比例 (w>0)							缺省时为100	
+			h=100						控件占用root控件的高比例 (h>0)							缺省时为100
+			text='内容' 					想要提示的内容 											缺省时为''
+			titleValue='标题1' 			标题内容 												缺省时为'标题'
+			color='#ffffff' 			控件的背景颜色 											缺省时为'#ffffff'
+			style={} 					属性表
+			ui  通过指定的ui创建
+
+		}
+		style = {
+			titleWidth=100 			  	标题控件的宽度											缺省时为100
+			titleHeight=40 				标题控件的高 												缺省时为20
+			textWidth=100 				内容控件的宽度											缺省时为80
+			textHeight=60 				内容控件的高 	 											缺省时为55		
+			buttonWidth=100 			按钮控件的宽度											缺省时为100	
+			buttonHeight=20 			按钮控件的高 	 											缺省时为20	
+			--------
+			titleStyle={}
+			textStyle={}		
+			titleStyle以textStyle为设置label的style属性。		
+		}
+	函数说明:
+		此控件通过创建一个popup弹窗控件为主控件,并添加入两个label以及一个button控件,点击按钮或者蒙层区域则会隐藏。
+		需要创建一个root页面并通过layout,才能构建。
+	local mainUI=rootView:createLayout({area=Rect(0,0,1280,720)}) --比如需要全屏
+	local context=mainUI:createContext()
+
+	diaLog.createLayout({ui=mainUI,text='asdasasadsklhcasjkdhvcjkshvkjcshvkajshvakjschvkjadsa',id='提示框',titleStyle={color='red'}})
+
+	mainUI:show()
+
+	while show do
+		sleep(1000)
+	end
+]]
 local object = {}
 function object:onCreateError(tag,parent,Base)
 	local str
@@ -567,6 +615,9 @@ function class:hidden()
 	self:setStyle('visibility','hidden')
 	return self
 end
+function class:getType()
+	return self.__tag
+end
 function class:getID()
 	if self.layoutView then
 		return self.layoutView:getID()
@@ -652,10 +703,6 @@ end
 function class:removeFromParent()
 	self.layoutView:removeFromParent()
 end
-function class:getType()
-	return self.__tag
-end
-
 
 local _storage = {}
 function _storage:new(fileName)
@@ -914,7 +961,7 @@ function _richText:createLayout(Base) --还没整好,不知道应该怎么控制
 	local backgroundColor 		= style.backgroundColor or '#fff'
 
 	local o = {
-		__tag = 'lable',
+		__tag = 'label',
 		context = context,
 		parentView = parentView,
 		width = width,
@@ -998,9 +1045,6 @@ end
 local _label = class:new()
 local xui_label = {
 	Count = 0,
-	theme = {
-
-	}
 }
 function _label:createLayout(Base) 
 	local Base = Base or {}
@@ -1008,13 +1052,13 @@ function _label:createLayout(Base)
 
 	local xpos   = floor((Base.xpos or 0)/100*parent.width)
 	local ypos   = floor((Base.ypos or 0)/100*parent.height)
-	local width  = floor((Base.w or 100)/100*parent.width)
-	local height = floor((Base.h or 100)/100*parent.height)
+	local width  = floor((Base.w)/100*parent.width)
+	local height = floor((Base.h)/100*parent.height)
 	local context    = parent.context
 	local saveData   = parent.saveData
 	local parentView = parent.layoutView
 
-	xui_label.Count = not Base.id and xui_label.Count + 1
+	xui_label.Count = not Base.id and xui_label.Count + 1 or xui_label.Count
 	local id = Base.id or utils.buildID('label',xui_label.Count)
 
 	local o = {
@@ -1030,11 +1074,12 @@ function _label:createLayout(Base)
 			style = {
 				left = xpos,
 				top = ypos,
+				width = width,
+				height = height,
+				style = {},
 			},
 			subviews = {
-				{
-					width = width,
-					height = height,
+				{	
 					view = '',
 					style = {},
 				},
@@ -1047,7 +1092,8 @@ function _label:createLayout(Base)
 	local image  = Base.image or ''
 	local style = Base.style or {}
 	local fontSize = style.fontSize or 18
-	local textColor = style.textColor or '#333333'
+	local textColor = style.textColor or '#000000'
+	local lines = style.lines or 0
 
 	local view = o.con.subviews[1]
 	if type =='text' then
@@ -1055,6 +1101,7 @@ function _label:createLayout(Base)
 		view.value = value
 		view.style.fontSize = fontSize
 		view.style.textColor = textColor
+		view.style.lines = lines
 	elseif type == 'image' then
 		view.view = 'image'
 		view.src = image
@@ -1065,7 +1112,26 @@ function _label:createLayout(Base)
 	setmetatable(o,{__index = _label})
 	return o
 end
-
+function _label:setLabelStyle(...)
+	local tbl = {...}
+	local labelStyle = self.con.subviews[1]
+	if (#tbl == 1) then
+		local styles = tbl[1]
+		if (type(tbl[1]) == 'table') then
+			if rawget(self,'layoutView') then
+				self.layoutView:getSubview(1):setStyle(styles)
+			end
+			utils.mergeTable(labelStyle,styles)
+		end
+	elseif (#tbl == 2) then
+		local key,value = tbl[1],tbl[2]
+			if rawget(self,'layoutView') then
+				self.layoutView:getSubview(1):setStyle(key,value)
+			end
+			labelStyle[key] = value
+	end
+	return self
+end
 
 local _button = class:new()
 local xui_button = {
@@ -1121,7 +1187,7 @@ function _button:createLayout(Base)
 	local saveData   = parent.saveData
 	local parentView = parent.layoutView
 	
-	xui_button.Count = not Base.id and xui_button.Count +1
+	xui_button.Count = not Base.id and xui_button.Count + 1 or xui_button.Count
 	local id = Base.id or utils.buildID('button',xui_button.Count)
 
 	local value = Base.text or ''
@@ -1219,7 +1285,7 @@ function _overlay:createLayout(Base) --overlay会在创建时将view设置回调
 	local context  = parent.context
 	local saveData = parent.saveData
 	
-	xui_overlay.Count = not Base.id and xui_overlay.Count +1
+	xui_overlay.Count = not Base.id and xui_overlay.Count + 1 or xui_overlay.Count
 	local id = Base.id or utils.buildID('overlay',xui_overlay.Count)
 	local backgroundColor = Base.color or 'rgba(0,0,0,0.4)'
 	local rootView = context:getRootView()
@@ -1323,7 +1389,7 @@ function _popup:createLayout(Base)
 	local context = parent.context
 	local saveData = parent.saveData
 
-	xui_popup.Count = not Base.id and xui_popup.Count + 1
+	xui_popup.Count = not Base.id and xui_popup.Count + 1 or xui_popup.Count
 	local id = Base.id or utils.buildID('popup',xui_popup.Count)
 	local direction = Base.direction or 'middle'
 
@@ -1342,9 +1408,10 @@ function _popup:createLayout(Base)
 	local overlay = _overlay.createLayout(parent):addToRootView()
 	o.overlay = overlay
 	overlay:setStyle(xui_popup.overlayStyle[direction])
+	overlay:setStyle(Base.overlayStyle)
 
 	--创建布局
-	local layout = Base.view or _layout.createLayout(overlay,{color=Base.color,w=w,h=h,xpos=xpos,ypos=ypos})
+	local layout = Base.view or _layout.createLayout(overlay,{color=Base.color,w=w,h=h,xpos=xpos,ypos=ypos,id=id})
 	layout:setStyle(xui_popup.layoutStyle[direction])
 
 	overlay:addSubview(layout) --将布局添加至蒙层
@@ -1365,7 +1432,7 @@ function _popup:show()
 	return self
 end
 function _popup:hidden()
-	self.overlay:hide()
+	self.overlay:hidden()
 	return self
 end
 function _popup:setActionCallback(callback)
@@ -1404,7 +1471,7 @@ function _input:createLayout(Base)
 	local saveData   = parent.saveData
 	local parentView = parent.layoutView
 
-	xui_input.Count = not Base.id and xui_input.Count + 1
+	xui_input.Count = not Base.id and xui_input.Count + 1 or xui_input.Count
 	local id = Base.id or utils.buildID('input',xui_input.Count)
 
 	local o = {
@@ -1673,7 +1740,7 @@ function _tabPage:createLayout(Base)
 	local saveData   = parent.saveData
 	local parentView = parent.layoutView
 
-	xui_tabPage.Count = not Base.id and xui_tabPage.Count + 1
+	xui_tabPage.Count = not Base.id and xui_tabPage.Count + 1 or xui_tabPage.Count
 	local id = Base.id or utils.buildID('tabPage',xui_tabPage.Count)	
 	local flexDirection = Base.sort=='row' and 'row' or 'column'
 
@@ -1803,6 +1870,7 @@ local xui_gridSelect = {
 			view = 'div',
 			style = {
 				['justify-content'] = 'center',
+				['align-items'] = 'center',
 			},
 			subviews = {
 				{
@@ -1819,9 +1887,9 @@ local xui_gridSelect = {
 				textColor = '#333333',
 				checkedTextColor = '#ffffff',
 				disableTextColor = '#eeeeee',
-				borderColor = '#000000',
+				borderColor = '#f5f5f5',
 				checkedBorderColor = '#ffb200',
-				backgroundColor = '#ffffff',
+				backgroundColor = '#f5f5f5',
 				checkedBackgroundColor = '#ffb200',
 			},
 			['red'] = {
@@ -1852,7 +1920,7 @@ function _gridSelect:createLayout(Base)
 	local saveData   = parent.saveData
 	local parentView = parent.layoutView
 
-	xui_tabPage.Count = not Base.id and xui_tabPage.Count + 1
+	xui_gridSelect.Count = not Base.id and xui_gridSelect.Count + 1 or xui_gridSelect.Count
 	local id = Base.id or utils.buildID('gridSelect',xui_gridSelect.Count)	
 
 	local o = {
@@ -1892,11 +1960,12 @@ function _gridSelect:createLayout(Base)
 	local checkedBackgroundColor = (style.checkedBackgroundColor or theme.checkedBackgroundColor) or '#fff'
 	local disabledBackgroundColor = style.disableBackgroundColor or '#f6f6f6'
 	local fontSize 				 = style.fontSize or 18
-	local borderWidth 			 = style.borderWidth or 1
+	local borderWidth 			 = style.borderWidth or 0.5
 	local borderRadius 			 = style.borderRadius or 5 
 	local borderColor 			 = (style.borderColor or theme.borderColor)  or '#000'
 	local disabledBorderColor    = style.disabledBorderColor or 'transparent'
 	local checkedBorderColor     = (style.checkedBorderColor or theme.checkedBorderColor) or '#000'
+
 	--list 
 	local listCount = #list --选项数量
 	local lineSpacing = (style.lineSpacing or 1)/100*width --行间隔
@@ -1909,6 +1978,7 @@ function _gridSelect:createLayout(Base)
 		borderColor = borderColor , disabledBorderColor = disabledBorderColor , checkedBorderColor = checkedBorderColor,
 		limit = limit , config = {}
 	}
+
 	local saveConfig = saveData:decodeGet(id) or {}
 	local checkedCount = 0
 	for k,v in pairs(list) do
@@ -2023,40 +2093,56 @@ function  _dialog.createLayout(Base)
 
 	local width  = Base.w or 50
 	local height = Base.h or 50
-	local backgroundColor = Base.color or 'transparent'
-	xui_dialog.Count = not Base.id and xui_dialog.Count + 1
+	local backgroundColor = Base.color or 'rgb(255,255,255)'
+	xui_dialog.Count = not Base.id and xui_dialog.Count + 1 or xui_dialog.Count
 	local id = Base.id or utils.buildID('dialog',xui_dialog.Count)
 
 	local style = Base.style or {}
-	local o = {
+	local o = {}
 
-	}
-
-	local popup = popup.createLayout({ui=ui,id=id,direction='middle',w=width,h=height,color=backgroundColor})
+	local popup = popup.createLayout({ui=ui,id=id,direction='middle',w=width,h=height,color=backgroundColor,overlayStyle={
+		backgroundColor = 'transparent',
+	}}):addToParent()
+	o.popup = popup
 	local popupView = popup:getView()
-
+	popupView:setActionCallback()
+	popupView:setStyle({
+		['border-radius'] = 5,
+		['justify-content'] = 'space-between',
+		['align-items'] = 'center',
+	})
 	-- 标题
 	local titleW = style.titleWidth or 100
 	local titleH = style.titleHeight or 20
 	local titleValue = Base.titleValue or '标题'
-	local title = popupView:createLabel({w=titleW,h=titleH,text=titleValue}):addToParent()
+	local title = popupView:createLabel({w=titleW,h=titleH,text=titleValue}):addToParent():setStyle({
+		['align-items'] = 'center',
+		['text-align']='center'
+	})
+	title:setLabelStyle(Base.titleStyle)
 
 	--内容
-	local textW = style.textWidth or 100
-	local textH = style.textHeight or 60
+	local textW = style.textWidth or 80
+	local textH = style.textHeight or 55
 	local textValue = Base.text or ''
-	local text = popupView:createLabel({w=textW,h=textH,text=textValue}):addToParent()
+	local text = popupView:createLabel({w=textW,h=textH,text=textValue}):addToParent():setStyle({
+		['align-items'] = 'center',
+		['text-align']='center',
+	})
+	text:setLabelStyle(Base.textStyle)
 
 	--按钮
 	local buttonW = style.buttonWidth or 100
 	local buttonH = style.buttonHeight or 20
 	local button = popupView:createLayout({w=buttonW,h=buttonH,sort='row'}):addToParent()
-	local cancel = button:createButton({w=50,h=100,text='cancel'}):addToParent()
-	local ok = button.createButton({w=50,h=100,text='ok'}):addToParent()
+	local ok = button:createButton({w=100,h=100,text='确定',textStyle={color='#0F8DE8'}}):addToParent():setActionCallback( function() 
+		popup:hidden()
+	end)
 
 	setmetatable(o,{__index = _dialog})
 	return o
 end
+
 
 ---------------------------------------------------------
 local API = {
@@ -2078,7 +2164,7 @@ end
 return {
 	rootView 	= _rootView,
 	layout 		= _layout,
-	lable 		= _lable,
+	label 		= _label,
 	gridSelect 	= _gridSelect,
 	popup 		= _popup,
 	overlay 	= _overlay,
@@ -2086,5 +2172,5 @@ return {
 	input 		= _input,
 	tabPage 	= _tabPage,
 	richText    = _richText,
-	dialog 		= _dialog
+	diaLog 		= _dialog
 }
