@@ -4,12 +4,9 @@ if screen.getOrientation() >= screen.PORTRAIT then
 	_width,_height = _height,_width
 end
 
-local calSacle = function (x) 
-	return 750 / _width * x 
-end
+local calSacle = function (x) return 750 / _width * x end
 
 local utils,floor = require'xui.utils',math.floor
-
 --[[
 	创建组件时将会继承父组件的context,layoutView,width,height.
 
@@ -52,7 +49,7 @@ local utils,floor = require'xui.utils',math.floor
 	setStyle()
 	setAttr() 
 	getID() 
-	getStyle()
+	getStyles()
 	getSubview(index)
 	getType()
 	removeFromParent()
@@ -607,6 +604,16 @@ function class:setAttr(...)
 	end
 	return self
 end
+function class:setActionCallback(callback)
+	local view = self.layoutView
+	local onClicked = function (id,action)
+		if callback then
+			callback(Base)
+		end
+	end
+	view:setActionCallback(UI.ACTION.CLICK, onClicked)
+	return self
+end
 function class:show()
 	self:setStyle('visibility','visible')
 	return self
@@ -704,7 +711,13 @@ function class:removeFromParent()
 	self.layoutView:removeFromParent()
 end
 
+
 local _storage = {}
+local _storage_metatable = {
+	__index = _storage,
+	__tostring = function(t)
+		return string.format('save to:%d',t.path)
+	end}
 function _storage:new(fileName)
 	local o ={
 		data={},
@@ -721,7 +734,7 @@ function _storage:new(fileName)
 		o.data = cjson.decode(str)
 	end
 	
-	setmetatable(o,{__index = _storage})
+	setmetatable(o,_storage_metatable)
 	return o
 end
 function _storage:put(id,value)
@@ -765,7 +778,19 @@ end
 
 
 local _rootView = {}
+local _root_metatable = {
+	__index = _rootView,
+	__tostring = function (t)
+		local layout = t.rootLayout
+		local style = layout.style
+		return string.format('Root[view=\'%s\',width=%d,height=%d,bgcolor=\'%s\']',
+			layout.view,
+			style.width,style.height,
+			style.backgroundColor
+			)
+	end,}
 function _rootView:createLayout(Base)
+	local Base = Base or {}
 	local rect = Base.area or Rect(0,0,_width,_height)
 	local width,height = calSacle(rect.width),calSacle(rect.height)
 	local left,top = calSacle(rect.x),calSacle(rect.y)
@@ -788,7 +813,7 @@ function _rootView:createLayout(Base)
 		},
 		globalStyle = Base.globalStyle or {},
 	}
-	setmetatable(o,{__index = self})
+	setmetatable(o,_root_metatable)
 	return o
 end
 function _rootView:createContext()
@@ -809,9 +834,23 @@ end
 
 
 local _layout = class:new()
+local _layout_metatable = {
+	__index = _layout,
+	__tostring = function(t)
+		local con = t.con
+		local style = t:getStyles()
+		local parentID = t.parentView:getID()
+		local count = t.layoutView and t.layoutView:subviewsCount() or 0
+		return string.format('Layout[ID=\'%s\',View=\'%s\',ParentID=\'%s\',Sort=\'%s\',Width=%d,Height=%d,Count=%d]',
+				con.id,con.view,
+				parentID,
+				style.flexDirection,
+				style.width,
+				style.height,
+				count)
+	end,}
 local xui_layout = {
-	Count = 0,
-}
+	Count = 0,}
 function _layout:createLayout(Base)
 	local Base = Base or {}
 	local parent,Base = object:createInit('layout',self,Base)
@@ -848,7 +887,7 @@ function _layout:createLayout(Base)
 				left = xpos,
 				top = ypos,
 				backgroundColor = backgroundColor,
-				['flex-direction'] = flexDirection,
+				flexDirection = flexDirection,
 			},
 			subviews = {},
 			['scroll-direction'] = scrollDirection,
@@ -856,7 +895,7 @@ function _layout:createLayout(Base)
 	}
 	utils.mergeTable(o.con.style,Base.style)
 	
-	setmetatable(o,{__index = _layout})
+	setmetatable(o,_layout_metatable)
 
 	return o
 end
@@ -1043,17 +1082,34 @@ end
 ]]--
 
 local _label = class:new()
+local _label_metatable = {
+	__index = _label,
+	__tostring = function(t)
+		local con = t.con
+		local style = t:getStyles()
+		local parentID = t.parentView:getID()
+		local _type = t.con.subviews[1].view
+
+		if _type == 'text' then
+			return string.format('Label[Text=\'%s\',ParentID=\'%s\']',
+				con.subivews[1].value,
+				parentID)
+		elseif _type == 'image' then
+			return string.format('Label[Src=\'%s\',ParentID=\'%s\']',
+				con.subivews[1].src,
+				parentID)
+		end
+	end,}
 local xui_label = {
-	Count = 0,
-}
+	Count = 0,}
 function _label:createLayout(Base) 
 	local Base = Base or {}
 	local parent,Base = object:createInit('label',self,Base)
 
 	local xpos   = floor((Base.xpos or 0)/100*parent.width)
 	local ypos   = floor((Base.ypos or 0)/100*parent.height)
-	local width  = floor((Base.w)/100*parent.width)
-	local height = floor((Base.h)/100*parent.height)
+	local width  = Base.w and floor((Base.w)/100*parent.width)
+	local height = Base.h and floor((Base.h)/100*parent.height)
 	local context    = parent.context
 	local saveData   = parent.saveData
 	local parentView = parent.layoutView
@@ -1076,12 +1132,14 @@ function _label:createLayout(Base)
 				top = ypos,
 				width = width,
 				height = height,
-				style = {},
+				style = {
+				},
 			},
 			subviews = {
 				{	
 					view = '',
-					style = {},
+					style = {
+					},
 				},
 			},
 		},
@@ -1096,7 +1154,7 @@ function _label:createLayout(Base)
 	local lines = style.lines or 0
 
 	local view = o.con.subviews[1]
-	if type =='text' then
+	if type =='text' or type=='link' then
 		view.view = 'text'
 		view.value = value
 		view.style.fontSize = fontSize
@@ -1109,7 +1167,12 @@ function _label:createLayout(Base)
 
 	utils.mergeTable(view.style,style)
 
-	setmetatable(o,{__index = _label})
+	setmetatable(o,_label_metatable)
+	if type == 'link' then
+		o:createView()
+		o:setActionCallback(function() runtime.openURL(value) end)
+	end
+
 	return o
 end
 function _label:setLabelStyle(...)
@@ -1133,7 +1196,22 @@ function _label:setLabelStyle(...)
 	return self
 end
 
+
+
 local _button = class:new()
+local _button_metatable = {
+	__index = _button,
+	__tostring = function (t)
+		local con = t.con
+		local style = t:getStyles()
+		local parentID = t.parentView:getID()
+		return string.format('Button[ID=\'%s\',ParentID=\'%s\',Width=%d,Height=%d,Text=\'%s\']',
+			con.id,
+			parentID,
+			style.width,
+			style.height,
+			con.subviews[1].value)
+	end,}
 local xui_button = {
 	Count = 0,
 	style = {
@@ -1247,7 +1325,7 @@ function _button:createLayout(Base)
 		utils.mergeTable(o.con.subviews[1].style,xui_button.style.text.disabled)
 		o.con.style['backgroundColor:active'] = nil
 	end
-	setmetatable(o,{__index = _button})
+	setmetatable(o,_button_metatable)
 	
 	return o
 end
@@ -1275,10 +1353,18 @@ end
 
 
 local  _overlay = class:new()
+local _overlay_metatable = {
+	__index = _overlay,
+	__tostring = function (t)
+		local con = t.con
+		local style = t:getStyles()
+		return string.format('overlay[ID=\'$s\',bgColor=\'%s\']',
+			con.id,style.backgroundColor
+			)
+	end,}
 local xui_overlay = {
-	Count = 0,
-}
-function _overlay:createLayout(Base) --overlay会在创建时将view设置回调并添加进root组件中,如果不设置回调可能会导致无法点击,需调用hidden
+	Count = 0,}
+function _overlay:createLayout(Base) --overlay会在创建时将回设置回调和隐藏并添加进root组件中,如果不设置回调可能会导致无法点击,需调用hidden
 	local Base = Base or {}
 	local parent,Base = object:createInit('overlay',self,Base)
 	
@@ -1312,7 +1398,7 @@ function _overlay:createLayout(Base) --overlay会在创建时将view设置回调
 			subviews = {},
 		},
 	}
-	setmetatable(o,{__index = _overlay})
+	setmetatable(o,_overlay_metatable)
 
 	o:createView()
 	if not Base.unSetActionCallback then 
@@ -1334,6 +1420,18 @@ end
 
 
 local _popup = class:new()
+local _popup_metatable = {
+	__index = _popup,
+	__tostring = function (t)
+		local layout = t.layoutView
+		local style = layout:getStyles()
+		local count = layout:subviewsCount()
+		return string.format('popup[ID=\'%s\',Width=%d,Height=%d]',
+			layout:getID(),
+			style.width,
+			style.height,
+			count)
+	end,}
 local xui_popup = {
 	Count = 0,
 	layoutStyle = {
@@ -1375,8 +1473,7 @@ local xui_popup = {
 			['justify-content'] = 'center',	
 			['align-items'] = 'center',			
 		},
-	},
-}
+	},}
 function _popup:createLayout(Base)
 	local Base = Base or {}
 	local parent,Base = object:createInit('popup',self,Base)
@@ -1420,7 +1517,7 @@ function _popup:createLayout(Base)
 	o.layoutView = layout:getView()
 	o.parentView = overlay:getView()
 
-	setmetatable(o,{__index = _popup})
+	setmetatable(o,_popup_metatable)
 	return o
 end
 function _popup:setStyle(...)
@@ -1445,6 +1542,18 @@ end
 
 
 local _input = class:new()
+local _input_metatable = {
+	__index = _input,
+	__tostring = function (t)
+		local con = t.con
+		local style = t:getStyles()
+		local parentID = t.parentView:getID()
+		return string.format('Input[ID=\'%s\',parentID=\'%s\',Width=%d,Height=%d]',
+			con.id,
+			parentID,
+			style.width,
+			style.heigth)
+	end,}
 local xui_input = {
 	Count = 0,
 	layout = function ()
@@ -1457,8 +1566,7 @@ local xui_input = {
 	THEME = {
 		
 	
-	}
-}
+	}}
 function _input:createLayout(Base)
 	local Base = Base or {}
 	local parent,Base = object:createInit('input',self,Base)
@@ -1533,7 +1641,7 @@ function _input:createLayout(Base)
 	}
 	o.con.subviews[1] = inputLayout
 	
-	setmetatable(o,{__index = _input})
+	setmetatable(o,_input_metatable)
 	
 	return o
 end
@@ -1565,6 +1673,17 @@ end
 
 
 local _tabPage = class:new()
+local _tabPage_metatable = {
+	__index = _tabPage,
+	__tostring = function (t)
+		local con = t.con
+		local parentID = t.parentView:getID()
+		local Count = #t.config.pages
+		return string.format('TabPage[ID=\'%s\',ParentID=\'%s\',Count=%d]',
+			con.id,
+			parentID,
+			Count)
+	end}
 local xui_tabPage = {
 	Count=0,
 	select_layout=function ()
@@ -1605,14 +1724,7 @@ local xui_tabPage = {
 			},
 			subviews = {},
 		}
-	end,
-	toString = function (Base)
-		local str = string.format('tabPage<id=%s,tabCount=%s,width=%s,height=%s>',
-			Base.con.id,#Base.config.pages,Base.width,Base.height
-		)
-		return str
-	end,
-} 
+	end,} 
 function _tabPage:buildTitle(list,style,layoutSort)
 	local o={
 		view = 'scroller',
@@ -1784,7 +1896,7 @@ function _tabPage:createLayout(Base)
 	o.con.subviews[1] = titleView
 	o.con.subviews[2] = tabView
 
-	setmetatable(o,{__index = _tabPage,__tostring = xui_tabPage.toString})
+	setmetatable(o,_tabPage_metatable)
 	return o
 end
 function _tabPage:createView()
@@ -1862,6 +1974,20 @@ end
 
 
 local _gridSelect = class:new()
+local _gridSelect_memtatable = {
+	__index = _gridSelect,
+	__tostring = function (t)
+		local con = t.con
+		local style = con.style
+		local parentID = t.parentView:getID()
+		local Count = #con.subviews
+		return string.format('GridSelect[ID=\'%s\',ParentID=\'%s\',Width=%d,Height=%d,Count=%d]',
+			con.id,
+			parentID,
+			style.width,
+			style.height,
+			Count)
+	end,}
 local xui_gridSelect = {
 	Count = 0,
 	layout = function ()
@@ -1906,8 +2032,7 @@ local xui_gridSelect = {
 			['text-overflow'] = 'ellipsis',
 			['text-align'] = 'center',
 		},
-	},
-}
+	},}
 function _gridSelect:createLayout(Base)
 	local Base = Base or {}
 	local parent,Base = object:createInit('gridSelect',self,Base)
@@ -2022,7 +2147,7 @@ function _gridSelect:createLayout(Base)
 		table.insert(o.con.subviews,view)
 	end
 
-	setmetatable(o,{__index = _gridSelect})
+	setmetatable(o,_gridSelect_memtatable)
 	return o
 end
 function _gridSelect:setActionCallback(callback)
@@ -2080,6 +2205,7 @@ function _gridSelect:setActionCallback(callback)
 	for i =1,subviewsCount do
 		view:getSubview(i):setActionCallback(UI.ACTION.CLICK,onClicked)
 	end
+	return self
 end
 
 
@@ -2090,7 +2216,6 @@ local xui_dialog = {
 }
 function  _dialog.createLayout(Base)
 	local ui = Base.ui
-
 	local width  = Base.w or 50
 	local height = Base.h or 50
 	local backgroundColor = Base.color or 'rgb(255,255,255)'
@@ -2100,10 +2225,21 @@ function  _dialog.createLayout(Base)
 	local style = Base.style or {}
 	local o = {}
 
-	local popup = popup.createLayout({ui=ui,id=id,direction='middle',w=width,h=height,color=backgroundColor,overlayStyle={
+	if not ui then
+		local width  = _width*width/100
+		local height = _height*height/100
+		local startX = _width/2 - width/2
+		local startY = _height/2 - height/2
+		ui = rootView:createLayout({area=Rect(startX,startY,width,height)})
+		ui:createContext()
+		o.ui = ui
+	end
+
+	local popup = popup.createLayout({ui=ui,id=id,direction='middle',color=backgroundColor,overlayStyle={
 		backgroundColor = 'transparent',
 	}}):addToParent()
 	o.popup = popup
+
 	local popupView = popup:getView()
 	popupView:setActionCallback()
 	popupView:setStyle({
@@ -2113,37 +2249,50 @@ function  _dialog.createLayout(Base)
 	})
 	-- 标题
 	local titleW = style.titleWidth or 100
-	local titleH = style.titleHeight or 20
-	local titleValue = Base.titleValue or '标题'
+	local titleH = style.titleHeight or 30
+	local titleValue = Base.title or '标题'
 	local title = popupView:createLabel({w=titleW,h=titleH,text=titleValue}):addToParent():setStyle({
-		['align-items'] = 'center',
-		['text-align']='center'
+ 		['align-items'] = 'center',
+		['justify-content'] = 'center',	
 	})
 	title:setLabelStyle(Base.titleStyle)
 
 	--内容
 	local textW = style.textWidth or 80
-	local textH = style.textHeight or 55
+	local textH = style.textHeight or 70
 	local textValue = Base.text or ''
 	local text = popupView:createLabel({w=textW,h=textH,text=textValue}):addToParent():setStyle({
-		['align-items'] = 'center',
-		['text-align']='center',
+ 		['align-items'] = 'center',
 	})
 	text:setLabelStyle(Base.textStyle)
 
-	--按钮
-	local buttonW = style.buttonWidth or 100
-	local buttonH = style.buttonHeight or 20
-	local button = popupView:createLayout({w=buttonW,h=buttonH,sort='row'}):addToParent()
-	local ok = button:createButton({w=100,h=100,text='确定',textStyle={color='#0F8DE8'}}):addToParent():setActionCallback( function() 
-		popup:hidden()
+	-- 关闭按钮
+	local endButton = popupView:createLayout({w=3,color='#FA143C',xpos=1,ypos=1}):createView():setStyle({
+		borderRadius = 999,
+		position = 'absolute',
+	}):addToParent()
+	endButton:setStyle('height',endButton:getStyles('width'))
+	endButton:setActionCallback( function()
+		ui.context:getRootView():setStyle({
+			left=0,top=0,width = 1,height = 1, --假装隐藏了
+		})
 	end)
 
 	setmetatable(o,{__index = _dialog})
 	return o
 end
-
-
+function _dialog:show()
+	if self.ui then
+		self.ui:show()
+	end
+	self.popup:show()
+end
+function _dialog:hidden()
+	if self.ui then
+		self.ui:close()
+	end
+	self.popup:hidden()
+end
 ---------------------------------------------------------
 local API = {
 	Label 		= _label,
