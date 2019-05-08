@@ -39,7 +39,7 @@ local utils,floor = require'xui.utils',math.floor
 	!!	注意若添加的组件已添加至ui中,将无法添加进其他组件
 	error: component(当前ID) already has parent (父组件ID)
 
-	-- 显示组件 隐藏组件 -- show,hidden
+	-- 显示组件 隐藏组件 -- visible,hidden
 	为组件设置visibiltiy属性
 
 	-- 设置回调 -- setActionCallback
@@ -87,7 +87,7 @@ local utils,floor = require'xui.utils',math.floor
 		同手册上的UIView:setAttr()
 
 	显示控件       --此显示是通过设置style属性实现
-	class:show()
+	class:visible()
 	函数说明:
 		设置当前控件的'visibility'属性为'visible'
 
@@ -326,7 +326,7 @@ local utils,floor = require'xui.utils',math.floor
 		同UIView:setStyle(),实际上是通过引用至layout组件。
 
 	显示弹窗
-	popup1:show()
+	popup1:visible()
 	函数说明:
 		通过设置蒙层的'visibility',达到显示的效果
 
@@ -614,7 +614,7 @@ function class:setActionCallback(callback)
 	view:setActionCallback(UI.ACTION.CLICK, onClicked)
 	return self
 end
-function class:show()
+function class:visible()
 	self:setStyle('visibility','visible')
 	return self
 end
@@ -835,6 +835,11 @@ end
 
 local _layout = class:new()
 local _layout_metatable = {
+	__index = function (k)
+		if type(_layout[k]) then
+			return _layout[k](self)
+		end
+	end,
 	__index = _layout,
 	__tostring = function(t)
 		local con = t.con
@@ -1524,8 +1529,8 @@ function _popup:setStyle(...)
 	self.layout:setStyle(...)
 	return self
 end
-function _popup:show()
-	self.overlay:show()
+function _popup:visible()
+	self.overlay:visible()
 	return self
 end
 function _popup:hidden()
@@ -2214,8 +2219,7 @@ local _dialog = class:new()
 local xui_dialog = {
 	Count = 0,
 }
-function  _dialog.createLayout(Base)
-	local ui = Base.ui
+function _dialog.createLayout(Base) 
 	local width  = Base.w or 50
 	local height = Base.h or 50
 	local backgroundColor = Base.color or 'rgb(255,255,255)'
@@ -2225,21 +2229,17 @@ function  _dialog.createLayout(Base)
 	local style = Base.style or {}
 	local o = {}
 
-	if not ui then
-		local width  = _width*width/100
-		local height = _height*height/100
-		local startX = _width/2 - width/2
-		local startY = _height/2 - height/2
-		ui = rootView:createLayout({area=Rect(startX,startY,width,height)})
-		ui:createContext()
-		o.ui = ui
-	end
+	local width  = _width*width/100
+	local height = _height*height/100
+	local startX = _width/2 - width/2
+	local startY = _height/2 - height/2
+	local ui = rootView:createLayout({area=Rect(startX,startY,width,height)})
+	ui:createContext()
+	o.ui = ui 
 
 	local popup = popup.createLayout({ui=ui,id=id,direction='middle',color=backgroundColor,overlayStyle={
-		backgroundColor = 'transparent',
-	}}):addToParent()
-	o.popup = popup
-
+		backgroundColor = 'transparent'
+	}}):addToParent():visible()
 	local popupView = popup:getView()
 	popupView:setActionCallback()
 	popupView:setStyle({
@@ -2277,21 +2277,14 @@ function  _dialog.createLayout(Base)
 			left=0,top=0,width = 1,height = 1, --假装隐藏了
 		})
 	end)
-
 	setmetatable(o,{__index = _dialog})
 	return o
 end
 function _dialog:show()
-	if self.ui then
-		self.ui:show()
-	end
-	self.popup:show()
+	self.ui:show()
 end
-function _dialog:hidden()
-	if self.ui then
-		self.ui:close()
-	end
-	self.popup:hidden()
+function _dialog:close() 
+	self.ui:close()
 end
 ---------------------------------------------------------
 local API = {
